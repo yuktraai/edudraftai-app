@@ -39,7 +39,7 @@ export async function POST(request) {
     // Invite via Supabase Auth (creates auth.users row, sends invite email via Resend/SMTP)
     const { data: inviteData, error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
       data: { college_id: adminProfile.college_id },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000')}/auth/callback`,
     })
 
     if (inviteError) {
