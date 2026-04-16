@@ -26,6 +26,31 @@ function LoginForm() {
     setLoading(true)
     setError(null)
 
+    // ── 1. Check email is registered before sending OTP ───────────────────
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json()
+
+      if (!data.allowed) {
+        setLoading(false)
+        if (data.reason === 'deactivated') {
+          setError('Your account has been deactivated. Please contact your college admin.')
+        } else {
+          setError('This email is not registered on EduDraftAI. Contact info@yuktraai.com to get access.')
+        }
+        return
+      }
+    } catch {
+      setLoading(false)
+      setError('Could not verify your email. Please try again.')
+      return
+    }
+
+    // ── 2. Email is valid — send magic link ───────────────────────────────
     const supabase = createClient()
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
