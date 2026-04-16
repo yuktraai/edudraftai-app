@@ -52,10 +52,12 @@ function LoginForm() {
 
     // ── 2. Email is valid — send magic link ───────────────────────────────
     const supabase = createClient()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${appUrl}/auth/callback`,
+        shouldCreateUser: false, // only allow pre-registered users
       },
     })
 
