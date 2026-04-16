@@ -456,6 +456,49 @@
   width: 78%;
 }
 
+/* ── Video placeholder ──────────────────────────────────────────────────── */
+
+.lp-video-wrap {
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 34px 90px rgba(13, 31, 60, 0.14);
+}
+
+.lp-video-placeholder {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(circle at 60% 40%, rgba(0, 180, 166, 0.18), transparent 40%),
+    linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 60%, #21548d 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  cursor: default;
+}
+
+.lp-video-play {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  padding-left: 4px; /* optical centre for play icon */
+}
+
+.lp-video-label {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 /* ── Sections ────────────────────────────────────────────────────────────── */
 
 .lp-section {

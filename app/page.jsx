@@ -31,6 +31,7 @@ export default function LandingPage() {
 
           <nav className="lp-nav" aria-label="Primary navigation">
             <a href="#why">Why EduDraftAI</a>
+            <a href="#demo">Demo</a>
             <a href="#features">Features</a>
             <a href="#roles">For Teams</a>
             <a href="#how">How It Works</a>
@@ -115,6 +116,34 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Demo Video ─────────────────────────────────────────────────────── */}
+        <section className="lp-section" id="demo">
+          <div className="lp-wrap">
+            <div className="lp-section-head">
+              <div>
+                <div className="lp-kicker">See It In Action</div>
+                <h2>Watch how it works.</h2>
+              </div>
+              <p className="lp-section-copy">
+                See how lecturers go from topic selection to a ready draft in under a minute —
+                no prompting experience needed.
+              </p>
+            </div>
+
+            {/* Video placeholder — replace src with real video URL when ready */}
+            <div className="lp-video-wrap">
+              <div className="lp-video-placeholder">
+                <div className="lp-video-play">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5.14v14l11-7-11-7z"/>
+                  </svg>
+                </div>
+                <p className="lp-video-label">Product demo coming soon</p>
               </div>
             </div>
           </div>
