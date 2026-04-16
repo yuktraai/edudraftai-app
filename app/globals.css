@@ -1,27 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --navy:       #0D1F3C;
+  --navy-2:     #1A3461;
+  --teal:       #00B4A6;
+  --teal-2:     #00D4C4;
+  --teal-light: #E6FFFA;
+  --bg:         #F4F7F6;
+  --surface:    #FFFFFF;
+  --border:     #E2E8F0;
+  --text:       #1A202C;
+  --muted:      #718096;
+  --success:    #38A169;
+  --warning:    #DD6B20;
+  --error:      #E53E3E;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-family: "Inter", sans-serif;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* ── Print styles ──────────────────────────────────────────────────────────── */
+@media print {
+  /* Reset the app shell — sidebar + main scroll container clip print output */
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* The app layout wrapper: flex h-screen overflow-hidden */
+  body > div,
+  #__next,
+  [data-nextjs-scroll-focus-boundary] {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* The sidebar — hide it */
+  aside {
+    display: none !important;
+  }
+
+  /* The <main> scroll container: flex-1 overflow-y-auto */
+  main {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Hide all interactive chrome */
+  .no-print,
+  button,
+  nav {
+    display: none !important;
+  }
+
+  /* Clean page margins */
+  @page {
+    margin: 16mm 12mm;
   }
 }

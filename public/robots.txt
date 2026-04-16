@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /api/
+Disallow: /admin/
+Disallow: /super-admin/
+Disallow: /generate/
+Disallow: /drafts/
+Allow: /
+
+Sitemap: https://edudraftai.com/sitemap.xml
