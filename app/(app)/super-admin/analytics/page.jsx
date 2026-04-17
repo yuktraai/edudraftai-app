@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 
-const TYPE_LABELS = {
-  lesson_notes:  'Lesson Notes',
-  mcq_bank:      'MCQ Bank',
-  question_bank: 'Question Bank',
-  test_plan:     'Internal Test',
+const TYPE_META = {
+  lesson_notes:  { label: 'Lesson Notes',  icon: '📝', color: 'text-blue-700',   bg: 'bg-blue-50',   bar: 'bg-blue-500',   border: 'border-blue-200' },
+  mcq_bank:      { label: 'MCQ Bank',      icon: '✅', color: 'text-purple-700', bg: 'bg-purple-50', bar: 'bg-purple-500', border: 'border-purple-200' },
+  question_bank: { label: 'Question Bank', icon: '📋', color: 'text-amber-700',  bg: 'bg-amber-50',  bar: 'bg-amber-500',  border: 'border-amber-200' },
+  test_plan:     { label: 'Internal Test', icon: '🗓', color: 'text-teal',       bg: 'bg-teal-light', bar: 'bg-teal',      border: 'border-teal/30' },
 }
+
+const TYPE_LABELS = Object.fromEntries(Object.entries(TYPE_META).map(([k, v]) => [k, v.label]))
 
 const RANGE_OPTIONS = [
   { value: 'month',      label: 'This Month' },
@@ -20,15 +22,116 @@ const TABS = [
   { id: 'feedback', label: 'Feedback' },
 ]
 
-// ─── Usage Tab ───────────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function Skeleton({ className = '' }) {
+  return <div className={`bg-border rounded animate-pulse ${className}`} />
+}
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+
+function StatCard({ label, value, sub, icon, accent = false }) {
+  return (
+    <div className={`rounded-xl border p-5 ${accent ? 'bg-navy border-navy/20' : 'bg-surface border-border'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <p className={`text-xs font-medium uppercase tracking-wide ${accent ? 'text-white/60' : 'text-muted'}`}>
+          {label}
+        </p>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${accent ? 'bg-white/10' : 'bg-bg'}`}>
+          {icon}
+        </div>
+      </div>
+      <p className={`text-3xl font-bold ${accent ? 'text-white' : 'text-navy'}`}>{value}</p>
+      {sub && <p className={`text-xs mt-1 ${accent ? 'text-white/50' : 'text-muted'}`}>{sub}</p>}
+    </div>
+  )
+}
+
+// ─── Content Breakdown ────────────────────────────────────────────────────────
+
+function ContentBreakdown({ byType, total }) {
+  return (
+    <div className="bg-surface border border-border rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-text mb-4">Platform Content Breakdown</h2>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {Object.entries(TYPE_META).map(([type, meta]) => {
+          const count = byType[type] ?? 0
+          const pct   = total > 0 ? Math.round((count / total) * 100) : 0
+          return (
+            <div key={type} className={`rounded-xl border ${meta.border} ${meta.bg} p-4`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">{meta.icon}</span>
+                <p className={`text-xs font-semibold ${meta.color}`}>{meta.label}</p>
+              </div>
+              <p className={`text-2xl font-bold ${meta.color}`}>{count}</p>
+              <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${meta.bar}`} style={{ width: `${pct}%` }} />
+              </div>
+              <p className="text-[10px] text-muted mt-1">{pct}% of total</p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Top Colleges Chart (horizontal CSS bars) ────────────────────────────────
+
+function TopCollegesChart({ data, metric, label }) {
+  const top10    = [...data]
+    .filter(c => (c[metric] ?? 0) > 0)
+    .sort((a, b) => (b[metric] ?? 0) - (a[metric] ?? 0))
+    .slice(0, 10)
+  const maxVal   = top10[0]?.[metric] ?? 1
+
+  if (top10.length === 0) {
+    return (
+      <div className="bg-surface border border-border rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-text mb-4">Top Colleges by {label}</h2>
+        <p className="text-sm text-muted text-center py-6">No data for this period.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-surface border border-border rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-text mb-5">Top Colleges by {label}</h2>
+      <div className="space-y-3">
+        {top10.map((col, i) => {
+          const val = col[metric] ?? 0
+          const pct = Math.round((val / maxVal) * 100)
+          return (
+            <div key={col.college_id} className="flex items-center gap-3">
+              <span className="w-5 text-xs font-bold text-muted text-right shrink-0">{i + 1}</span>
+              <span className="w-48 text-xs font-medium text-text truncate shrink-0" title={col.college_name}>
+                {col.college_name}
+              </span>
+              <div className="flex-1 h-2.5 bg-bg rounded-full overflow-hidden border border-border">
+                <div
+                  className="h-full bg-teal rounded-full transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="w-10 text-xs font-semibold text-navy text-right shrink-0">{val}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Usage Tab ────────────────────────────────────────────────────────────────
 
 function UsageTab() {
-  const [data,    setData]    = useState([])
+  const [apiData, setApiData] = useState(null)
   const [range,   setRange]   = useState('month')
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
   const [sortKey, setSortKey] = useState('generations')
   const [sortAsc, setSortAsc] = useState(false)
+  const [metric,  setMetric]  = useState('generations')  // chart toggle
 
   useEffect(() => {
     setLoading(true)
@@ -37,7 +140,7 @@ function UsageTab() {
       .then(r => r.json())
       .then(json => {
         if (json.error) setError(json.error)
-        else setData(json.data ?? [])
+        else setApiData(json)
       })
       .catch(() => setError('Network error. Please try again.'))
       .finally(() => setLoading(false))
@@ -48,6 +151,11 @@ function UsageTab() {
     else { setSortKey(key); setSortAsc(false) }
   }
 
+  const data           = apiData?.data           ?? []
+  const platform_by_type = apiData?.platform_by_type ?? {}
+  const totals         = apiData?.totals          ?? {}
+  const totalGens      = totals.generations  ?? 0
+
   const sorted = [...data].sort((a, b) => {
     const av = a[sortKey] ?? 0
     const bv = b[sortKey] ?? 0
@@ -55,20 +163,41 @@ function UsageTab() {
     return sortAsc ? cmp : -cmp
   })
 
-  const totals = data.reduce((acc, col) => ({
-    generations:  acc.generations  + (col.generations ?? 0),
-    credits_used: acc.credits_used + (col.credits_used ?? 0),
-    lecturers:    acc.lecturers    + (col.lecturers    ?? 0),
-  }), { generations: 0, credits_used: 0, lecturers: 0 })
-
   const SortIcon = ({ col }) => (
     <span className="ml-1 inline-block opacity-50">
       {sortKey === col ? (sortAsc ? '↑' : '↓') : '↕'}
     </span>
   )
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <Skeleton className="h-9 w-64" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-surface border border-border rounded-xl p-8 text-center">
+        <p className="text-sm text-error">{error}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
+
       {/* Range picker */}
       <div className="flex justify-end">
         <div className="flex items-center gap-1 bg-bg border border-border rounded-xl p-1">
@@ -83,85 +212,132 @@ function UsageTab() {
         </div>
       </div>
 
-      {/* Summary totals */}
-      {!loading && !error && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Total Colleges',    value: data.length },
-            { label: 'Total Generations', value: totals.generations },
-            { label: 'Total Credits Used', value: totals.credits_used },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-surface border border-border rounded-xl p-5">
-              <p className="text-xs text-muted uppercase tracking-wide">{label}</p>
-              <p className="text-3xl font-bold text-navy mt-1">{value}</p>
+      {/* ── Platform Summary Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Total Colleges"    value={totals.colleges   ?? data.length} icon="🏫" />
+        <StatCard label="Active Lecturers"  value={totals.lecturers  ?? 0}           icon="👨‍🏫" />
+        <StatCard label="Total Generations" value={totals.generations ?? 0}          icon="📄" sub="completed" />
+        <StatCard label="Credits Consumed"  value={totals.credits_used ?? 0}         icon="💳" accent />
+      </div>
+
+      {/* ── Content Breakdown ── */}
+      {totalGens > 0 && (
+        <ContentBreakdown byType={platform_by_type} total={totalGens} />
+      )}
+
+      {/* ── Top Colleges Charts ── */}
+      {data.length > 0 && (
+        <div>
+          {/* Chart metric toggle */}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-heading text-base font-bold text-navy">College Performance</h2>
+            <div className="flex items-center gap-1 bg-bg border border-border rounded-xl p-1">
+              {[
+                { value: 'generations',  label: 'Generations' },
+                { value: 'credits_used', label: 'Credits' },
+              ].map(({ value, label }) => (
+                <button key={value} onClick={() => setMetric(value)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    metric === value ? 'bg-surface text-navy shadow-sm' : 'text-muted hover:text-text'
+                  }`}>
+                  {label}
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
+          <TopCollegesChart
+            data={data}
+            metric={metric}
+            label={metric === 'generations' ? 'Generations' : 'Credits Used'}
+          />
         </div>
       )}
 
-      {/* Table */}
+      {/* ── Per-College Table ── */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border">
-          <h2 className="text-sm font-semibold text-text">Per-College Breakdown</h2>
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-text">All Colleges Breakdown</h2>
+          <span className="text-xs text-muted">{data.length} colleges</span>
         </div>
 
-        {loading ? (
-          <div className="p-8 space-y-3">
-            {[1,2,3,4].map(i => <div key={i} className="h-10 bg-border rounded animate-pulse" />)}
-          </div>
-        ) : error ? (
-          <div className="px-5 py-6 text-sm text-error">{error}</div>
-        ) : data.length === 0 ? (
+        {data.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-muted">No colleges found.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-bg">
-                {[
-                  { key: 'college_name', label: 'College' },
-                  { key: 'lecturers',    label: 'Lecturers' },
-                  { key: 'generations',  label: 'Generations' },
-                  { key: 'credits_used', label: 'Credits Used' },
-                  { key: 'top_type',     label: 'Top Content' },
-                ].map(({ key, label }) => (
-                  <th
-                    key={key}
-                    onClick={() => handleSort(key)}
-                    className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide cursor-pointer hover:text-text select-none"
-                  >
-                    {label}<SortIcon col={key} />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sorted.map(col => (
-                <tr key={col.college_id} className="hover:bg-bg transition-colors">
-                  <td className="px-5 py-3.5 font-medium text-text">{col.college_name}</td>
-                  <td className="px-5 py-3.5 text-muted">{col.lecturers}</td>
-                  <td className="px-5 py-3.5">
-                    <span className="font-semibold text-navy">{col.generations}</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className={`font-semibold ${col.credits_used > 0 ? 'text-teal' : 'text-muted'}`}>
-                      {col.credits_used}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {col.top_type ? (
-                      <span className="text-xs bg-bg border border-border rounded-full px-2.5 py-1">
-                        {TYPE_LABELS[col.top_type] ?? col.top_type}
-                      </span>
-                    ) : (
-                      <span className="text-muted text-xs">—</span>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-bg">
+                  {[
+                    { key: 'college_name', label: 'College' },
+                    { key: 'lecturers',    label: 'Lecturers' },
+                    { key: 'generations',  label: 'Generations' },
+                    { key: 'credits_used', label: 'Credits Used' },
+                    { key: 'top_type',     label: 'Top Content' },
+                  ].map(({ key, label }) => (
+                    <th
+                      key={key}
+                      onClick={() => handleSort(key)}
+                      className="px-5 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wide cursor-pointer hover:text-text select-none whitespace-nowrap"
+                    >
+                      {label}<SortIcon col={key} />
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {sorted.map(col => {
+                  const genShare = totalGens > 0 ? Math.round((col.generations / totalGens) * 100) : 0
+                  return (
+                    <tr key={col.college_id} className="hover:bg-bg transition-colors">
+                      <td className="px-5 py-3.5 font-medium text-text max-w-xs truncate">{col.college_name}</td>
+                      <td className="px-5 py-3.5 text-muted">{col.lecturers}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-navy w-8">{col.generations}</span>
+                          {genShare > 0 && (
+                            <div className="flex-1 h-1.5 bg-bg rounded-full overflow-hidden border border-border min-w-[48px]">
+                              <div className="h-full bg-teal/60 rounded-full" style={{ width: `${genShare}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`font-semibold ${col.credits_used > 0 ? 'text-teal' : 'text-muted'}`}>
+                          {col.credits_used}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {col.top_type ? (
+                          <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
+                            TYPE_META[col.top_type]
+                              ? `${TYPE_META[col.top_type].bg} ${TYPE_META[col.top_type].color} ${TYPE_META[col.top_type].border}`
+                              : 'bg-bg text-muted border-border'
+                          }`}>
+                            {TYPE_META[col.top_type]?.icon} {TYPE_LABELS[col.top_type] ?? col.top_type}
+                          </span>
+                        ) : (
+                          <span className="text-muted text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              {/* Totals row */}
+              <tfoot>
+                <tr className="border-t-2 border-border bg-bg">
+                  <td className="px-5 py-3 text-xs font-bold text-muted uppercase">Platform Total</td>
+                  <td className="px-5 py-3 font-bold text-text">{totals.lecturers ?? 0}</td>
+                  <td className="px-5 py-3 font-bold text-navy">{totals.generations ?? 0}</td>
+                  <td className="px-5 py-3 font-bold text-teal">{totals.credits_used ?? 0}</td>
+                  <td className="px-5 py-3 text-muted text-xs">—</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
       </div>
+
     </div>
   )
 }
@@ -226,9 +402,7 @@ function FeedbackTab() {
   if (loading) {
     return (
       <div className="space-y-4">
-        {[1,2,3].map(i => (
-          <div key={i} className="h-24 bg-border rounded-xl animate-pulse" />
-        ))}
+        {[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}
       </div>
     )
   }
@@ -428,7 +602,7 @@ export default function SuperAdminAnalyticsPage() {
       {/* Header */}
       <div>
         <h1 className="font-heading text-2xl font-bold text-navy">Global Analytics</h1>
-        <p className="text-muted text-sm mt-1">Cross-college usage breakdown and feedback intelligence.</p>
+        <p className="text-muted text-sm mt-1">Platform-wide usage, content breakdown, and feedback intelligence.</p>
       </div>
 
       {/* Tab bar */}

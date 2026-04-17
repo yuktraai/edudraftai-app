@@ -115,7 +115,7 @@ export default function DraftDetailPage() {
   }
 
   function handlePrint() {
-    window.open(`/drafts/${id}/print?autoprint=1`, '_blank')
+    window.open(`/print/${id}?autoprint=1`, '_blank')
   }
 
   async function handleDelete() {
