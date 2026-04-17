@@ -42,15 +42,20 @@ export async function POST(request) {
       // Send confirmation email (fire-and-forget — don't fail the request if email fails)
       try {
         const { subject, html } = waitlistConfirmationEmail({ name, email })
-        await getResend().emails.send({
+        const result = await getResend().emails.send({
           from:    'EduDraftAI <waitlist@edudraftai.com>',
           to:      email,
           subject,
           html,
         })
+        if (result?.error) {
+          logger.error('[waitlist] Resend API error:', JSON.stringify(result.error))
+        } else {
+          logger.info('[waitlist] confirmation email sent, id:', result?.data?.id)
+        }
       } catch (emailErr) {
-        logger.error('[waitlist POST] email send error', emailErr)
-        // Don't fail — just log
+        logger.error('[waitlist] email send exception:', emailErr?.message ?? emailErr)
+        // Don't fail the signup — just log
       }
     }
 
