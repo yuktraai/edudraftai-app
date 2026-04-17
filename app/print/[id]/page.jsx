@@ -4,7 +4,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { PrintDocument } from '@/components/generation/PrintDocument'
 
 // Standalone page — intentionally outside (app) route group so no sidebar/header renders
-export const metadata = { title: 'Print Preview' }
+export const metadata = { title: 'EduDraftAI' }
 export const dynamic  = 'force-dynamic'
 
 export default async function PrintPage({ params, searchParams }) {

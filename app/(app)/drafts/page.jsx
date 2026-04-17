@@ -89,7 +89,7 @@ export default function DraftsPage() {
         <select value={subjectId} onChange={handleSubjectChange} className={selectCls} disabled={subjects.length === 0}>
           <option value="">All Subjects</option>
           {subjects.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+            <option key={s.id} value={s.id}>{s.label ?? s.name}</option>
           ))}
         </select>
 

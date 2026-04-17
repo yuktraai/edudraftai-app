@@ -60,7 +60,7 @@ export async function GET(request) {
     // Fetch unique subjects this user has drafted (for filter dropdown)
     let subjectsQuery = adminSupabase
       .from('content_generations')
-      .select('subject_id, subjects ( id, name )')
+      .select('subject_id, subjects ( id, name, departments ( name ) )')
       .eq('college_id', profile.college_id)
       .eq('status', 'completed')
 
@@ -70,12 +70,26 @@ export async function GET(request) {
 
     const { data: rawSubjects } = await subjectsQuery
 
-    // Deduplicate subjects
+    // Deduplicate subjects by subject_id; build display label with dept if name is ambiguous
     const seen = new Set()
-    const subjects = (rawSubjects ?? [])
+    const uniqueSubjects = (rawSubjects ?? [])
       .filter(r => r.subjects && !seen.has(r.subject_id) && seen.add(r.subject_id))
-      .map(r => ({ id: r.subject_id, name: r.subjects.name }))
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(r => ({
+        id:      r.subject_id,
+        name:    r.subjects.name,
+        dept:    r.subjects.departments?.name ?? null,
+      }))
+
+    // Count how many subjects share the same name — add dept suffix for ambiguous names
+    const nameCounts = {}
+    for (const s of uniqueSubjects) nameCounts[s.name] = (nameCounts[s.name] ?? 0) + 1
+
+    const subjects = uniqueSubjects
+      .map(s => ({
+        id:    s.id,
+        label: nameCounts[s.name] > 1 && s.dept ? `${s.name} · ${s.dept}` : s.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
 
     return Response.json({
       data:      data ?? [],

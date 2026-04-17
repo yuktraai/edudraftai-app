@@ -92,6 +92,9 @@ function PrintFooter({ lecturer, college }) {
           <span className="print-footer-sep"> · {college.name}</span>
         )}
       </div>
+      <div className="print-footer-center">
+        www.edudraftai.com
+      </div>
       <div className="print-footer-right">
         <span className="print-page-num" />
       </div>
@@ -294,6 +297,9 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
           font-size: 11px;
           color: #718096;
         }
+        .print-footer-left  { flex: 1; }
+        .print-footer-center { flex: 1; text-align: center; color: #00B4A6; font-weight: 600; letter-spacing: .01em; }
+        .print-footer-right  { flex: 1; text-align: right; }
         .print-footer-sep { margin-left: 2px; }
 
         /* CSS counter for page numbers */
@@ -338,15 +344,16 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
           body          { background: white !important; }
           .print-page   {
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 18mm 15mm 20mm 15mm !important;
             max-width: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             min-height: auto !important;
           }
+          /* margin: 0 removes the browser's native header/footer (URL, date, title) */
           @page {
             size: A4;
-            margin: 18mm 15mm 20mm 15mm;
+            margin: 0;
           }
         }
       `}</style>
