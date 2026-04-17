@@ -34,6 +34,8 @@ export function LogoUploadClient({ collegeId, currentLogoUrl, collegeName }) {
       const res  = await fetch(`/api/colleges/${collegeId}/logo`, { method: 'POST', body: form })
       const json = await res.json()
       if (!res.ok) { setError(json.error ?? 'Upload failed'); return }
+      // Update preview to the real Supabase public URL returned by the API
+      if (json.data?.logo_url) setPreview(json.data.logo_url)
       setSuccess(true)
       setFile(null)
       router.refresh()

@@ -1,5 +1,3 @@
-import Image from 'next/image'
-
 const SIZES = { sm: 32, md: 56, lg: 80 }
 
 export function CollegeLogo({ logoUrl, collegeName, size = 'md' }) {
@@ -17,13 +15,13 @@ export function CollegeLogo({ logoUrl, collegeName, size = 'md' }) {
         className="rounded-xl overflow-hidden shrink-0 bg-bg border border-border"
         style={{ width: px, height: px }}
       >
-        <Image
+        {/* Plain <img> — avoids next/image domain whitelist requirement for external Supabase URLs */}
+        <img
           src={logoUrl}
           alt={`${collegeName} logo`}
           width={px}
           height={px}
           className="object-contain w-full h-full"
-          unoptimized
         />
       </div>
     )
