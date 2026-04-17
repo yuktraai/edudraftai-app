@@ -1,40 +1,37 @@
-// NOTE: The 'syllabuses' Supabase Storage bucket must be created in the
-// Supabase dashboard with the following settings:
-//   - Bucket name: syllabuses
-//   - Public: false (private)
-//   - Allowed MIME types: application/pdf
+/**
+ * Phase 10B — AI-Assisted Syllabus Parse Route
+ *
+ * Two-stage pipeline:
+ *   Stage 1: pdf-parse → raw text
+ *   Stage 2: GPT-4o JSON extraction → structured chunks
+ *
+ * DB migration required before deploying (run in Supabase SQL Editor):
+ *   ALTER TABLE public.syllabus_chunks
+ *     ADD COLUMN IF NOT EXISTS parse_confidence NUMERIC(3,2),
+ *     ADD COLUMN IF NOT EXISTS raw_source_text  TEXT;
+ *
+ *   ALTER TABLE public.syllabus_files
+ *     DROP CONSTRAINT IF EXISTS syllabus_files_parse_status_check;
+ *   ALTER TABLE public.syllabus_files
+ *     ADD CONSTRAINT syllabus_files_parse_status_check
+ *     CHECK (parse_status IN ('pending','processing','completed','failed','low_confidence'));
+ *
+ * NOTE: The 'syllabuses' Supabase Storage bucket must exist (private, PDF only, 10MB limit).
+ */
 
 import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { parseSyllabusWithAI } from '@/lib/ai/syllabus-parser'
 import { logger } from '@/lib/logger'
 
-function chunkByUnits(text, subjectName) {
-  const unitRegex = /^(UNIT|Unit|Chapter|MODULE)\s+[\dIVX]+.*$/gm
-  const matches = [...text.matchAll(unitRegex)]
-  if (matches.length === 0) {
-    return [{ unit_number: 1, topic: subjectName, subtopics: [], raw_text: text.slice(0, 2000) }]
-  }
-  return matches.map((match, i) => {
-    const start = match.index
-    const end = matches[i + 1]?.index ?? text.length
-    const chunkText = text.slice(start, end)
-    const lines = chunkText.split('\n').filter((l) => l.trim())
-    const subtopics = lines.slice(1, 8).map((l) => l.trim()).filter(Boolean)
-    return {
-      unit_number: i + 1,
-      topic:       match[0].trim(),
-      subtopics,
-      raw_text:    chunkText.slice(0, 2000),
-    }
-  })
-}
+const LOW_CONFIDENCE_THRESHOLD = 0.5
 
-// Health check — open in browser to confirm route loads and pdf-parse is reachable
+// Health check — open in browser to confirm route + dependencies load
 export async function GET() {
   try {
-    const m  = await import('pdf-parse')
-    const fn = m.default ?? m
-    return Response.json({ ok: true, pdfParseLoaded: typeof fn === 'function' })
+    const pdfModule = await import('pdf-parse')
+    const fn = pdfModule.default ?? pdfModule
+    return Response.json({ ok: true, pdfParseLoaded: typeof fn === 'function', phase: 10 })
   } catch (e) {
     return Response.json({ ok: false, error: e.message }, { status: 500 })
   }
@@ -64,12 +61,12 @@ export async function POST(request) {
     // ── 2. Parse multipart form ───────────────────────────────────────────────
     step = 'formdata'
     const formData = await request.formData()
-    const file = formData.get('file')
+    const file     = formData.get('file')
 
-    // Accept subject_ids (JSON array, preferred) or legacy subject_id (string)
+    // Accept subject_ids (JSON array) or legacy subject_id (single string)
     let subjectIds = []
-    const rawIds = formData.get('subject_ids')
-    const rawId  = formData.get('subject_id')
+    const rawIds   = formData.get('subject_ids')
+    const rawId    = formData.get('subject_id')
     if (rawIds) {
       try { subjectIds = JSON.parse(rawIds) } catch { subjectIds = [] }
     } else if (rawId) {
@@ -82,6 +79,11 @@ export async function POST(request) {
     if (file.type !== 'application/pdf')
       return Response.json({ error: 'Only PDF files are allowed', code: 'INVALID_TYPE' }, { status: 400 })
 
+    const buffer = Buffer.from(await file.arrayBuffer())
+
+    if (buffer.length > 10 * 1024 * 1024)
+      return Response.json({ error: 'File too large (max 10MB)', code: 'FILE_TOO_LARGE' }, { status: 413 })
+
     // ── 3. Validate all subjects exist (no college_id restriction for super_admin) ─
     step = 'validate-subjects'
     const { data: subjects, error: subjectErr } = await adminSupabase
@@ -92,19 +94,17 @@ export async function POST(request) {
     if (subjectErr || !subjects || subjects.length === 0)
       return Response.json({ error: 'No valid subjects found', code: 'SUBJECT_NOT_FOUND' }, { status: 404 })
 
-    // All subjects must belong to the same college
-    const colleges = [...new Set(subjects.map((s) => s.college_id))]
-    if (colleges.length > 1)
+    const collegeIds = [...new Set(subjects.map(s => s.college_id))]
+    if (collegeIds.length > 1)
       return Response.json({ error: 'All subjects must belong to the same college', code: 'COLLEGE_MISMATCH' }, { status: 400 })
 
-    collegeId = colleges[0]
+    collegeId = collegeIds[0]
     const primarySubject = subjects[0]
 
-    // ── 4. Upload PDF to Supabase Storage (once, under primary subject path) ──
+    // ── 4. Upload PDF to Supabase Storage ────────────────────────────────────
     step = 'storage-upload'
-    const filename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const filename    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const storagePath = `${collegeId}/${primarySubject.id}/${filename}`
-    const buffer = Buffer.from(await file.arrayBuffer())
 
     const { error: uploadErr } = await adminSupabase.storage
       .from('syllabuses')
@@ -112,10 +112,9 @@ export async function POST(request) {
 
     if (uploadErr) throw new Error(`Storage upload failed: ${uploadErr.message}`)
 
-    // ── 5. Insert syllabus_files row for EACH subject_id ─────────────────────
+    // ── 5. Insert syllabus_files rows (one per subject_id) ───────────────────
     step = 'insert-syllabus-files'
-    // NOTE: syllabus_files has no updated_at column — only created_at + parse_status
-    const fileRows = subjects.map((s) => ({
+    const fileRows = subjects.map(s => ({
       subject_id:   s.id,
       college_id:   collegeId,
       file_name:    filename,
@@ -130,23 +129,35 @@ export async function POST(request) {
       .select('id, subject_id')
 
     if (insertFileErr) throw new Error(`Failed to insert syllabus_files: ${insertFileErr.message}`)
-    insertedFiles.forEach((f) => insertedFileIds.push(f.id))
+    insertedFiles.forEach(f => insertedFileIds.push(f.id))
 
-    // Build a map from subject_id → syllabus_file_id for linking chunks
-    const fileIdBySubject = Object.fromEntries(insertedFiles.map((f) => [f.subject_id, f.id]))
+    // Map subject_id → syllabus_file_id
+    const fileIdBySubject = Object.fromEntries(insertedFiles.map(f => [f.subject_id, f.id]))
 
-    // ── 6. Parse PDF text ────────────────────────────────────────────────────
+    // ── 6. Extract text with pdf-parse ────────────────────────────────────────
     step = 'pdf-parse'
-    // Imported lazily (inside the handler) so Next.js build never evaluates it.
-    // serverExternalPackages in next.config.mjs ensures Node uses native fs at runtime.
     const pdfModule = await import('pdf-parse')
     const pdfParse  = pdfModule.default ?? pdfModule
     const pdfData   = await pdfParse(buffer)
-    const text      = pdfData.text
+    const rawText   = pdfData.text ?? ''
 
-    // ── 7. Chunk by unit headings ─────────────────────────────────────────────
-    step = 'chunking'
-    const chunks = chunkByUnits(text, primarySubject.name)
+    if (!rawText.trim()) throw new Error('PDF text extraction returned empty content')
+
+    // ── 7. AI-assisted structured extraction ─────────────────────────────────
+    // parseSyllabusWithAI uses GPT-4o (JSON mode) to produce clean, structured chunks
+    step = 'ai-extraction'
+    logger.info('[parse-syllabus] Starting AI extraction', { subjectIds, textLen: rawText.length })
+
+    // We parse once for the primary subject; fan-out to other subjects below
+    const aiChunks = await parseSyllabusWithAI(
+      rawText,
+      primarySubject.id,
+      fileIdBySubject[primarySubject.id],
+      collegeId,
+      primarySubject.name,
+    )
+
+    logger.info('[parse-syllabus] AI extraction complete', { chunks: aiChunks.length })
 
     // ── 8. Delete old chunks for ALL subject_ids, then bulk insert ────────────
     step = 'delete-old-chunks'
@@ -157,16 +168,19 @@ export async function POST(request) {
       .eq('college_id', collegeId)
 
     step = 'insert-chunks'
-    // Fan out: same chunk content inserted for each subject_id, linked to its file
-    const chunkRows = subjects.flatMap((s) =>
-      chunks.map((c) => ({
-        subject_id:       s.id,
-        college_id:       collegeId,
-        syllabus_file_id: fileIdBySubject[s.id] ?? null,
-        unit_number:      c.unit_number,
-        topic:            c.topic,
-        subtopics:        c.subtopics,
-        raw_text:         c.raw_text,
+    // Fan out: same chunk content for each subject_id, linked to its file row
+    const chunkRows = subjects.flatMap(s =>
+      aiChunks.map(c => ({
+        subject_id:        s.id,
+        college_id:        collegeId,
+        syllabus_file_id:  fileIdBySubject[s.id] ?? null,
+        unit_number:       c.unit_number,
+        topic:             c.topic,
+        subtopics:         c.subtopics,
+        raw_text:          c.raw_text,
+        // Phase 10 columns (graceful if migration not yet run)
+        ...(c.raw_source_text   != null ? { raw_source_text:  c.raw_source_text  } : {}),
+        ...(c.parse_confidence  != null ? { parse_confidence: c.parse_confidence } : {}),
       }))
     )
 
@@ -176,49 +190,77 @@ export async function POST(request) {
 
     if (chunksErr) throw new Error(`Failed to insert chunks: ${chunksErr.message}`)
 
-    // ── 9. Mark all syllabus_files as completed ───────────────────────────────
+    // ── 9. Compute average confidence + determine final parse_status ──────────
     step = 'mark-completed'
-    // No updated_at column — only update parse_status
-    const { error: updateErr } = await adminSupabase
-      .from('syllabus_files')
-      .update({ parse_status: 'completed' })
-      .in('id', insertedFileIds)
+    const avgConfidence = aiChunks.length > 0
+      ? aiChunks.reduce((s, c) => s + (c.parse_confidence ?? 0), 0) / aiChunks.length
+      : 0
 
-    if (updateErr) throw new Error(`Failed to mark files completed: ${updateErr.message}`)
+    const finalStatus = avgConfidence < LOW_CONFIDENCE_THRESHOLD && aiChunks.length > 0
+      ? 'low_confidence'
+      : 'completed'
 
-    // ── 10. Write success system_log ─────────────────────────────────────────
+    // Try to use low_confidence status; fall back to 'completed' if DB constraint not yet updated
+    let markErr = null
+    try {
+      const { error } = await adminSupabase
+        .from('syllabus_files')
+        .update({ parse_status: finalStatus })
+        .in('id', insertedFileIds)
+      markErr = error
+    } catch {}
+
+    if (markErr) {
+      // DB constraint may not include 'low_confidence' yet — fall back gracefully
+      await adminSupabase
+        .from('syllabus_files')
+        .update({ parse_status: 'completed' })
+        .in('id', insertedFileIds)
+    }
+
+    // ── 10. Write system_log ─────────────────────────────────────────────────
     try {
       await adminSupabase.from('system_logs').insert({
         college_id: collegeId,
         user_id:    user.id,
         event_type: 'syllabus_parse',
-        severity:   'info',
-        message:    `Syllabus parsed successfully: ${filename}`,
+        severity:   avgConfidence < LOW_CONFIDENCE_THRESHOLD ? 'warning' : 'info',
+        message:    `Syllabus parsed (AI): ${filename} — avg confidence ${(avgConfidence * 100).toFixed(0)}%`,
         metadata: {
-          subject_ids:    subjectIds,
-          college_id:     collegeId,
-          chunks_created: chunks.length,
-          dept_count:     subjects.length,
-          file_name:      filename,
+          subject_ids:      subjectIds,
+          college_id:       collegeId,
+          chunks_created:   aiChunks.length,
+          dept_count:       subjects.length,
+          file_name:        filename,
+          avg_confidence:   Number(avgConfidence.toFixed(2)),
+          final_status:     finalStatus,
         },
       })
     } catch { /* non-fatal */ }
 
-    logger.info('[parse-syllabus] Success', { subjectIds, chunks: chunks.length, depts: subjects.length })
+    logger.info('[parse-syllabus] Done', {
+      subjectIds,
+      chunks: aiChunks.length,
+      depts: subjects.length,
+      avgConfidence: avgConfidence.toFixed(2),
+      finalStatus,
+    })
 
     return Response.json({
       data: {
         syllabus_file_ids: insertedFileIds,
-        chunks_created:    chunks.length,
+        chunks_created:    aiChunks.length,
         dept_count:        subjects.length,
         file_name:         filename,
+        avg_confidence:    Number(avgConfidence.toFixed(2)),
+        parse_status:      finalStatus,
       },
     }, { status: 201 })
 
   } catch (err) {
     logger.error('[POST /api/parse-syllabus]', err)
 
-    // Mark any inserted file rows as failed (no updated_at column)
+    // Mark failed files
     if (insertedFileIds.length > 0) {
       try {
         await adminSupabase
@@ -228,14 +270,14 @@ export async function POST(request) {
       } catch { /* non-fatal */ }
     }
 
-    // Write error system_log (non-fatal)
+    // Write error log
     try {
       await adminSupabase.from('system_logs').insert({
         college_id: collegeId ?? null,
         event_type: 'syllabus_parse',
         severity:   'error',
         message:    err.message,
-        metadata:   { error: err.message, syllabus_file_ids: insertedFileIds },
+        metadata:   { step, error: err.message, syllabus_file_ids: insertedFileIds },
       })
     } catch { /* non-fatal */ }
 

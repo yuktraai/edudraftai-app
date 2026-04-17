@@ -127,16 +127,21 @@ export async function POST(request) {
     )
 
   // ── 7. Build prompt params (merge chunk context + user params) ────────────
-  // If parent_topic is present in params, the user selected a specific subtopic.
-  // In that case, params.topic = subtopic and params.subtopics = [] — use them directly.
-  // Otherwise, fall back to the chunk's full topic + subtopics list.
-  const isSubtopicFocused = Boolean(params.parent_topic)
+  // Phase 10C: TopicPicker now emits multi-selected subtopics as an array.
+  // params.subtopics = the user's selection (1–5 items).
+  // If params.subtopics has items, use them; otherwise fall back to chunk's full list.
+  // params spread last so user values always override computed defaults.
+  const selectedSubtopics =
+    Array.isArray(params.subtopics) && params.subtopics.length > 0
+      ? params.subtopics
+      : (chunk?.subtopics ?? [])
+
   const promptParams = {
     subject_name: subject.name,
     semester:     subject.semester,
-    topic:        isSubtopicFocused ? params.topic : (chunk?.topic ?? params.topic ?? subject.name),
-    subtopics:    isSubtopicFocused ? [] : (chunk?.subtopics ?? params.subtopics ?? []),
-    ...params,
+    topic:        chunk?.topic ?? params.topic ?? subject.name,
+    subtopics:    selectedSubtopics,
+    ...params,   // topic + subtopics from params override if present
   }
   const messages = buildPrompt(content_type, promptParams)
 
