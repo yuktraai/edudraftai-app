@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
+import { FeedbackBar } from '@/components/generation/FeedbackBar'
 
 const TYPE_META = {
   lesson_notes:  { label: 'Lesson Notes',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -70,22 +71,26 @@ function DeleteModal({ onConfirm, onCancel, deleting }) {
 export default function DraftDetailPage() {
   const { id }   = useParams()
   const router   = useRouter()
-  const [draft,    setDraft]    = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState(null)
-  const [copied,   setCopied]   = useState(false)
+  const [draft,      setDraft]      = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(null)
+  const [copied,     setCopied]     = useState(false)
+  const [feedback,   setFeedback]   = useState(null) // { rating, feedback_text }
   const [showDelete, setShowDelete] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
 
   useEffect(() => {
     if (!id) return
-    fetch(`/api/drafts/${id}`)
-      .then(r => r.json())
-      .then(({ data, error: e }) => {
-        if (e || !data) setError(e ?? 'Draft not found')
-        else setDraft(data)
-      })
-      .catch(() => setError('Network error. Please try again.'))
+    Promise.all([
+      fetch(`/api/drafts/${id}`).then(r => r.json()),
+      fetch(`/api/feedback?generation_id=${id}`).then(r => r.json()).catch(() => ({ data: null })),
+    ]).then(([draftRes, feedbackRes]) => {
+      if (draftRes.error || !draftRes.data) setError(draftRes.error ?? 'Draft not found')
+      else {
+        setDraft(draftRes.data)
+        setFeedback(feedbackRes.data ?? null)
+      }
+    }).catch(() => setError('Network error. Please try again.'))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -110,7 +115,7 @@ export default function DraftDetailPage() {
   }
 
   function handlePrint() {
-    window.print()
+    window.open(`/drafts/${id}/print?autoprint=1`, '_blank')
   }
 
   async function handleDelete() {
@@ -326,6 +331,11 @@ export default function DraftDetailPage() {
                 {draft.raw_output ?? ''}
               </ReactMarkdown>
             </article>
+            <FeedbackBar
+              generationId={id}
+              initialRating={feedback?.rating ?? null}
+              initialFeedback={feedback?.feedback_text ?? ''}
+            />
           </div>
         </div>
 

@@ -31,6 +31,7 @@ export function TopicPicker({ onChange }) {
   const [departments, setDepartments] = useState([])
   const [subjects,    setSubjects]    = useState([])
   const [chunks,      setChunks]      = useState([])
+  const [favSubjects, setFavSubjects] = useState(new Set())
 
   // Selections
   const [deptId,     setDeptId]     = useState('')
@@ -46,13 +47,17 @@ export function TopicPicker({ onChange }) {
 
   const [error, setError] = useState(null)
 
-  // ── Step 1: departments on mount ─────────────────────────────────────────
+  // ── Step 1: departments + favorites on mount ──────────────────────────────
   useEffect(() => {
     setLoadingDepts(true)
-    fetch('/api/syllabus/departments')
-      .then((r) => r.json())
-      .then(({ data }) => { setDepartments(data ?? []); setLoadingDepts(false) })
-      .catch(() => { setError('Failed to load departments'); setLoadingDepts(false) })
+    Promise.all([
+      fetch('/api/syllabus/departments').then(r => r.json()),
+      fetch('/api/favorites').then(r => r.json()),
+    ]).then(([deptRes, favRes]) => {
+      setDepartments(deptRes.data ?? [])
+      setFavSubjects(new Set(favRes.data?.subjects ?? []))
+      setLoadingDepts(false)
+    }).catch(() => { setError('Failed to load departments'); setLoadingDepts(false) })
   }, [])
 
   // ── Step 3: subjects when dept + semester chosen ──────────────────────────
@@ -201,7 +206,15 @@ export function TopicPicker({ onChange }) {
             className={selectCls}
           >
             <option value="">Select subject</option>
-            {subjects.map((s) => (
+            {/* Favourited subjects first */}
+            {subjects.filter(s => favSubjects.has(s.id)).map((s) => (
+              <option key={s.id} value={s.id}>★ {s.name} ({s.code})</option>
+            ))}
+            {subjects.filter(s => favSubjects.has(s.id)).length > 0 &&
+              subjects.filter(s => !favSubjects.has(s.id)).length > 0 && (
+              <option disabled>── Other subjects ──</option>
+            )}
+            {subjects.filter(s => !favSubjects.has(s.id)).map((s) => (
               <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
             ))}
           </select>

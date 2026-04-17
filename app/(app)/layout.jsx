@@ -24,14 +24,47 @@ export default async function AppLayout({ children }) {
 
   // Fetch credit balance server-side for lecturer + college_admin
   let creditBalance = null
+  let hasZeroBalanceLecturers = false
+
   if (profile.role === 'lecturer' || profile.role === 'college_admin') {
     const { data: bal } = await adminSupabase
       .rpc('get_credit_balance', { p_user_id: user.id })
     creditBalance = bal ?? 0
   }
 
+  // For college_admin: check if any lecturer in their college has 0 credits
+  if (profile.role === 'college_admin' && profile.college_id) {
+    const { data: lecturers } = await adminSupabase
+      .from('users')
+      .select('id')
+      .eq('college_id', profile.college_id)
+      .eq('role', 'lecturer')
+      .eq('is_active', true)
+
+    if (lecturers?.length) {
+      // Fetch aggregate credit balances from ledger
+      const { data: ledger } = await adminSupabase
+        .from('credit_ledger')
+        .select('user_id, amount')
+        .in('user_id', lecturers.map(l => l.id))
+
+      const balanceMap = {}
+      for (const row of ledger ?? []) {
+        balanceMap[row.user_id] = (balanceMap[row.user_id] ?? 0) + row.amount
+      }
+
+      // Any lecturer whose sum is 0 or not in map (never received credits)
+      hasZeroBalanceLecturers = lecturers.some(l => (balanceMap[l.id] ?? 0) <= 0)
+    }
+  }
+
   return (
-    <AppShell role={profile.role} name={profile.name} creditBalance={creditBalance}>
+    <AppShell
+      role={profile.role}
+      name={profile.name}
+      creditBalance={creditBalance}
+      hasZeroBalanceLecturers={hasZeroBalanceLecturers}
+    >
       {children}
     </AppShell>
   )

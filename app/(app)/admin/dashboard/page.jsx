@@ -2,55 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { BarChart }   from '@/components/admin/charts/BarChart'
+import { DonutChart } from '@/components/admin/charts/DonutChart'
 
 const TYPE_META = {
-  lesson_notes:  { label: 'Lesson Notes',  color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200' },
-  mcq_bank:      { label: 'MCQ Bank',      color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
-  question_bank: { label: 'Question Bank', color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-200' },
-  test_plan:     { label: 'Internal Test', color: 'text-teal',       bg: 'bg-teal-light', border: 'border-teal' },
+  lesson_notes:  { label: 'Lesson Notes',  color: '#1A3461' },
+  mcq_bank:      { label: 'MCQ Bank',      color: '#00B4A6' },
+  question_bank: { label: 'Question Bank', color: '#38A169' },
+  test_plan:     { label: 'Internal Test', color: '#DD6B20' },
 }
 
-// ── CSS Bar Chart (no external lib) ──────────────────────────────────────────
-function BarChart({ daily_counts }) {
-  if (!daily_counts?.length) return null
-  const max = Math.max(...daily_counts.map(d => d.count), 1)
-
-  // Show only every 5th label to avoid crowding
-  return (
-    <div>
-      <div className="flex items-end gap-0.5 h-24">
-        {daily_counts.map(({ date, count }, i) => {
-          const pct = (count / max) * 100
-          return (
-            <div key={date} className="flex-1 flex flex-col items-center justify-end group relative">
-              {/* Tooltip */}
-              {count > 0 && (
-                <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col items-center z-10">
-                  <div className="bg-navy text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap">
-                    {count} on {date.slice(5)}
-                  </div>
-                  <div className="w-1.5 h-1.5 bg-navy rotate-45 -mt-0.5" />
-                </div>
-              )}
-              <div
-                className={`w-full rounded-t-sm transition-all ${count > 0 ? 'bg-teal' : 'bg-border'}`}
-                style={{ height: `${Math.max(pct, count > 0 ? 4 : 2)}%` }}
-              />
-            </div>
-          )
-        })}
-      </div>
-      {/* X-axis labels: show first, middle, last */}
-      <div className="flex justify-between mt-1">
-        <span className="text-[10px] text-muted">{daily_counts[0]?.date.slice(5)}</span>
-        <span className="text-[10px] text-muted">{daily_counts[14]?.date.slice(5)}</span>
-        <span className="text-[10px] text-muted">{daily_counts[29]?.date.slice(5)}</span>
-      </div>
-    </div>
-  )
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
   const [data,    setData]    = useState(null)
   const [range,   setRange]   = useState('month')
@@ -71,6 +32,15 @@ export default function AdminDashboardPage() {
   }, [range])
 
   const rangeLabel = range === 'month' ? 'This month' : range === 'last_month' ? 'Last month' : 'All time'
+
+  // Prepare donut data from by_type
+  const donutData = data
+    ? Object.entries(TYPE_META).map(([type, meta]) => {
+        const count = data.by_type?.[type] ?? 0
+        const total = data.total_generations || 1
+        return { name: meta.label, value: count, pct: Math.round((count / total) * 100), color: meta.color }
+      }).filter(d => d.value > 0)
+    : []
 
   return (
     <div className="p-8 max-w-5xl space-y-6">
@@ -134,35 +104,19 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Content type breakdown */}
-          <div className="bg-surface border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-text mb-4">Content Type Breakdown</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {Object.entries(TYPE_META).map(([type, meta]) => {
-                const count = data.by_type?.[type] ?? 0
-                const total = data.total_generations || 1
-                const pct   = Math.round((count / total) * 100)
-                return (
-                  <div key={type} className={`rounded-xl border ${meta.border} ${meta.bg} p-4`}>
-                    <p className={`text-xs font-semibold ${meta.color}`}>{meta.label}</p>
-                    <p className={`text-2xl font-bold ${meta.color} mt-1`}>{count}</p>
-                    <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${meta.color.replace('text-', 'bg-')}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted mt-1">{pct}% of total</p>
-                  </div>
-                )
-              })}
+          {/* Charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Bar chart — daily generations */}
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-text mb-4">Generations — Last 30 Days</h2>
+              <BarChart data={data.daily_counts ?? []} dataKey="count" xKey="date" />
             </div>
-          </div>
 
-          {/* Bar chart */}
-          <div className="bg-surface border border-border rounded-xl p-5">
-            <h2 className="text-sm font-semibold text-text mb-4">Generations — Last 30 Days</h2>
-            <BarChart daily_counts={data.daily_counts} />
+            {/* Donut chart — by content type */}
+            <div className="bg-surface border border-border rounded-xl p-5">
+              <h2 className="text-sm font-semibold text-text mb-2">Content Type Mix</h2>
+              <DonutChart data={donutData} />
+            </div>
           </div>
 
           {/* Top lecturers */}

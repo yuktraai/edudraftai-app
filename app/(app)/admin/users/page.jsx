@@ -22,6 +22,20 @@ export default async function AdminUsersPage() {
     .neq('role', 'super_admin')
     .order('created_at', { ascending: false })
 
+  // Fetch credit balances for all users in this college
+  const userIds = (users ?? []).map(u => u.id)
+  let balanceMap = {}
+  if (userIds.length) {
+    const { data: ledger } = await adminSupabase
+      .from('credit_ledger')
+      .select('user_id, amount')
+      .in('user_id', userIds)
+
+    for (const row of ledger ?? []) {
+      balanceMap[row.user_id] = (balanceMap[row.user_id] ?? 0) + row.amount
+    }
+  }
+
   return (
     <div className="p-8 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
@@ -47,22 +61,48 @@ export default async function AdminUsersPage() {
                 <th className="text-left px-5 py-3 font-medium text-muted">Name</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Email</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Role</th>
+                <th className="text-left px-5 py-3 font-medium text-muted">Credits</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Status</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {users.map((u) => (
-                <tr key={u.id} className="hover:bg-bg transition-colors">
-                  <td className="px-5 py-3 font-medium text-text">{u.name}</td>
-                  <td className="px-5 py-3 text-muted">{u.email}</td>
-                  <td className="px-5 py-3"><RoleBadge role={u.role} /></td>
-                  <td className="px-5 py-3"><StatusBadge active={u.is_active} /></td>
-                  <td className="px-5 py-3">
-                    <UsersClient userId={u.id} isActive={u.is_active} role={u.role} />
-                  </td>
-                </tr>
-              ))}
+              {users.map((u) => {
+                const balance    = balanceMap[u.id] ?? 0
+                const isZero     = u.is_active && balance <= 0
+                const rowClass   = isZero ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-bg'
+
+                return (
+                  <tr key={u.id} className={`transition-colors ${rowClass}`}>
+                    <td className="px-5 py-3 font-medium text-text">
+                      <div className="flex items-center gap-2">
+                        {isZero && (
+                          <span
+                            className="inline-block w-2 h-2 rounded-full bg-error shrink-0"
+                            title="Out of credits"
+                          />
+                        )}
+                        {u.name}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-muted">{u.email}</td>
+                    <td className="px-5 py-3"><RoleBadge role={u.role} /></td>
+                    <td className="px-5 py-3">
+                      <span className={`text-sm font-semibold ${
+                        balance <= 0  ? 'text-error'   :
+                        balance <= 5  ? 'text-warning'  :
+                        'text-success'
+                      }`}>
+                        {balance}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3"><StatusBadge active={u.is_active} /></td>
+                    <td className="px-5 py-3">
+                      <UsersClient userId={u.id} isActive={u.is_active} role={u.role} />
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

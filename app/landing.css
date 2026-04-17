@@ -992,3 +992,159 @@
     font-size: 0.94rem;
   }
 }
+
+/* ── Waitlist section ─────────────────────────────────────────────────────── */
+
+.lp-waitlist-section {
+  background: linear-gradient(135deg, #0D1F3C 0%, #1A3461 100%);
+}
+
+.lp-waitlist-section .lp-kicker {
+  color: var(--teal);
+  background: rgba(0,180,166,.15);
+  border-color: rgba(0,180,166,.3);
+}
+
+.lp-waitlist-section h2 {
+  color: #fff;
+}
+
+.lp-waitlist-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: start;
+}
+
+.lp-waitlist-copy p {
+  color: rgba(255,255,255,.75);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-top: 16px;
+}
+
+.lp-waitlist-perks {
+  list-style: none;
+  padding: 0;
+  margin: 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lp-waitlist-perks li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,.85);
+  font-size: 0.95rem;
+}
+
+.lp-waitlist-form-wrap {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.18);
+}
+
+.lp-waitlist-form h3,
+.lp-waitlist-success h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin: 0 0 24px;
+}
+
+.lp-wf-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.lp-wf-group label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4A5568;
+}
+
+.lp-wf-group input,
+.lp-wf-group select {
+  padding: 10px 14px;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 10px;
+  font-size: 0.93rem;
+  color: #1A202C;
+  background: #F4F7F6;
+  outline: none;
+  transition: border-color .18s;
+}
+
+.lp-wf-group input:focus,
+.lp-wf-group select:focus {
+  border-color: var(--teal);
+  background: #fff;
+}
+
+.lp-wf-error {
+  font-size: 0.85rem;
+  color: #E53E3E;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: #FFF5F5;
+  border: 1px solid #FED7D7;
+  border-radius: 8px;
+}
+
+.lp-wf-submit {
+  width: 100%;
+  padding: 13px;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.97rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .18s, opacity .18s;
+}
+
+.lp-wf-submit:hover:not(:disabled) {
+  background: var(--teal-2);
+}
+
+.lp-wf-submit:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.lp-wf-note {
+  text-align: center;
+  font-size: 0.78rem;
+  color: #718096;
+  margin: 12px 0 0;
+}
+
+.lp-waitlist-success {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.lp-waitlist-success-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.lp-waitlist-success p {
+  font-size: 0.95rem;
+  color: #4A5568;
+  line-height: 1.6;
+  margin-top: 12px;
+}
+
+@media (max-width: 860px) {
+  .lp-waitlist-inner {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+}

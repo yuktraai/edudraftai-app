@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { FeedbackBar } from './FeedbackBar'
 
 export function OutputViewer({ content, isStreaming, generationId }) {
   const [copied, setCopied] = useState(false)
@@ -79,6 +80,11 @@ export function OutputViewer({ content, isStreaming, generationId }) {
             <span className="inline-block w-0.5 h-4 bg-teal animate-pulse ml-0.5 align-middle" />
           )}
         </pre>
+
+        {/* Feedback shown once streaming is done */}
+        {!isStreaming && content && (
+          <FeedbackBar generationId={generationId} />
+        )}
       </div>
     </div>
   )

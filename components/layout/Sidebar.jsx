@@ -10,17 +10,18 @@ const NAV_LINKS = {
     { label: 'Syllabus Manager', href: '/super-admin/syllabus' },
     { label: 'Analytics',        href: '/super-admin/analytics' },
     { label: 'Logs',             href: '/super-admin/logs' },
+    { label: 'Waitlist',         href: '/super-admin/waitlist' },
   ],
   college_admin: [
     { label: 'Dashboard',    href: '/admin/dashboard' },
     { label: 'Generate',     href: '/generate' },
     { label: 'My Drafts',    href: '/drafts' },
-    { label: 'Lecturers',    href: '/admin/users' },
+    { label: 'Lecturers',    href: '/admin/users',      alertKey: 'zeroCredits' },
     { label: 'Departments',  href: '/admin/departments' },
     { label: 'Subjects',     href: '/admin/subjects' },
-    { label: 'Syllabus',      href: '/syllabus' },
-    { label: 'Credits',       href: '/admin/credits' },
-    { label: 'Buy Credits',   href: '/admin/credits/buy' },
+    { label: 'Syllabus',     href: '/syllabus' },
+    { label: 'Credits',      href: '/admin/credits' },
+    { label: 'Buy Credits',  href: '/admin/credits/buy' },
   ],
   lecturer: [
     { label: 'Dashboard',  href: '/dashboard' },
@@ -36,7 +37,7 @@ const ROLE_LABELS = {
   lecturer:      'Lecturer',
 }
 
-export function Sidebar({ role, name, creditBalance, onClose }) {
+export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, onClose }) {
   const pathname = usePathname()
   const links    = NAV_LINKS[role] ?? NAV_LINKS.lecturer
 
@@ -81,10 +82,13 @@ export function Sidebar({ role, name, creditBalance, onClose }) {
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {links.map(({ label, href }) => {
+        {links.map(({ label, href, alertKey }) => {
           const isActive =
             pathname === href ||
             (href !== '/dashboard' && href !== '/generate' && pathname.startsWith(href))
+
+          // Show alert dot on "Lecturers" when any lecturer is at 0 credits
+          const showAlert = alertKey === 'zeroCredits' && hasZeroBalanceLecturers
 
           return (
             <Link
@@ -96,7 +100,13 @@ export function Sidebar({ role, name, creditBalance, onClose }) {
                   : 'text-slate-300 hover:bg-navy-2 hover:text-white'
               }`}
             >
-              {label}
+              <span className="flex-1">{label}</span>
+              {showAlert && (
+                <span
+                  className="inline-block w-2 h-2 rounded-full bg-error shrink-0"
+                  title="One or more lecturers are out of credits"
+                />
+              )}
             </Link>
           )
         })}

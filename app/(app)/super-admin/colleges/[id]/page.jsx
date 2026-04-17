@@ -2,7 +2,9 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { StatusBadge, RoleBadge } from '@/components/ui/Badge'
+import { CollegeLogo } from '@/components/ui/CollegeLogo'
 import { CollegeDetailClient } from './CollegeDetailClient'
+import { LogoUploadClient } from './LogoUploadClient'
 
 export const metadata = { title: 'College Detail — EduDraftAI' }
 
@@ -42,15 +44,27 @@ export default async function CollegeDetailPage({ params }) {
   return (
     <div className="p-8 max-w-4xl space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <a href="/super-admin/colleges" className="text-teal text-sm hover:underline">
-            ← All Colleges
-          </a>
-          <h1 className="font-heading text-2xl font-bold text-navy mt-2">{college.name}</h1>
-          <p className="text-muted text-sm font-mono mt-0.5">{college.code}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <CollegeLogo logoUrl={college.logo_url} collegeName={college.name} size="lg" />
+          <div>
+            <a href="/super-admin/colleges" className="text-teal text-sm hover:underline">
+              ← All Colleges
+            </a>
+            <h1 className="font-heading text-2xl font-bold text-navy mt-2">{college.name}</h1>
+            <p className="text-muted text-sm font-mono mt-0.5">{college.code}</p>
+          </div>
         </div>
         <StatusBadge active={college.is_active} />
+      </div>
+
+      {/* Logo upload */}
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <h2 className="font-heading text-base font-bold text-navy mb-1">College Logo</h2>
+        <p className="text-muted text-sm mb-4">
+          PNG, JPG, WebP or SVG. Max 2MB. Appears in print headers and college listings.
+        </p>
+        <LogoUploadClient collegeId={params.id} currentLogoUrl={college.logo_url} collegeName={college.name} />
       </div>
 
       {/* Stats */}

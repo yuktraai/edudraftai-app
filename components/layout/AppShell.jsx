@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Sidebar } from './Sidebar'
+import { Sidebar }       from './Sidebar'
+import { CreditWarning } from '@/components/ui/CreditWarning'
 
 /**
  * AppShell — wraps the app layout with a responsive sidebar.
  * Desktop: sidebar always visible on the left.
  * Mobile (< lg): sidebar hidden, hamburger toggles a slide-out drawer + backdrop.
  */
-export function AppShell({ role, name, creditBalance, children }) {
+export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, children }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -28,7 +29,12 @@ export function AppShell({ role, name, creditBalance, children }) {
 
       {/* ── Desktop sidebar (always visible ≥ lg) ─────────────────────────── */}
       <div className="hidden lg:flex lg:shrink-0">
-        <Sidebar role={role} name={name} creditBalance={creditBalance} />
+        <Sidebar
+          role={role}
+          name={name}
+          creditBalance={creditBalance}
+          hasZeroBalanceLecturers={hasZeroBalanceLecturers}
+        />
       </div>
 
       {/* ── Mobile drawer backdrop ─────────────────────────────────────────── */}
@@ -46,7 +52,13 @@ export function AppShell({ role, name, creditBalance, children }) {
         transform transition-transform duration-250 ease-in-out
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <Sidebar role={role} name={name} creditBalance={creditBalance} onClose={() => setOpen(false)} />
+        <Sidebar
+          role={role}
+          name={name}
+          creditBalance={creditBalance}
+          hasZeroBalanceLecturers={hasZeroBalanceLecturers}
+          onClose={() => setOpen(false)}
+        />
       </div>
 
       {/* ── Main content area ──────────────────────────────────────────────── */}
@@ -74,6 +86,10 @@ export function AppShell({ role, name, creditBalance, children }) {
         </div>
 
         <main className="flex-1 overflow-y-auto">
+          {/* Credit warning banner — shown for lecturer/college_admin when balance ≤ 5 */}
+          {creditBalance !== null && creditBalance <= 5 && (
+            <CreditWarning balance={creditBalance} role={role} />
+          )}
           {children}
         </main>
       </div>

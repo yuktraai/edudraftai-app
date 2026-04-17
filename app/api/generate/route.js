@@ -140,17 +140,33 @@ export async function POST(request) {
   }
   const messages = buildPrompt(content_type, promptParams)
 
-  // ── 8. Create content_generations row (status: generating) ───────────────
+  // ── 8a. Detect regeneration ───────────────────────────────────────────────
+  // A regeneration is when the same user generates the same content_type for
+  // the same syllabus chunk more than once.
+  let isRegeneration = false
+  if (chunk_id) {
+    const { count } = await adminSupabase
+      .from('content_generations')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('syllabus_chunk_id', chunk_id)
+      .eq('content_type', content_type)
+      .eq('status', 'completed')
+
+    isRegeneration = (count ?? 0) > 0
+  }
+
+  // ── 8b. Create content_generations row (status: generating) ──────────────
   const { data: generation, error: genInsertErr } = await adminSupabase
     .from('content_generations')
     .insert({
-      user_id:          user.id,
-      college_id:       profile.college_id,
+      user_id:           user.id,
+      college_id:        profile.college_id,
       subject_id,
       syllabus_chunk_id: chunk_id ?? null,
       content_type,
-      prompt_params:    promptParams,
-      status:           'generating',
+      prompt_params:     { ...promptParams, is_regeneration: isRegeneration },
+      status:            'generating',
     })
     .select('id')
     .single()

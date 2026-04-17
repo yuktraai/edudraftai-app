@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import './landing.css'
-import { CountdownTimer } from '@/components/landing/CountdownTimer'
+import { CountdownTimer }   from '@/components/landing/CountdownTimer'
+import { WaitlistSection }  from '@/components/landing/WaitlistSection'
 
 export const metadata = {
   title: 'EduDraftAI | AI Drafting for Diploma College Lecturers',
@@ -387,6 +388,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ── Waitlist ───────────────────────────────────────────────────────── */}
+        <WaitlistSection />
 
       </main>
 
