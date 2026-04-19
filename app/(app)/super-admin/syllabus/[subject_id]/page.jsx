@@ -5,6 +5,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/Badge'
 import { ChunksEditor } from './ChunksEditor'
 import { ParseQualityTab } from './ParseQualityTab'
+import { RagDocsTab } from './RagDocsTab'
 import { ClearSyllabusButton } from '../ClearSyllabusButton'
 
 export const metadata = { title: 'Subject Syllabus — EduDraftAI' }
@@ -70,6 +71,13 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
 
   const chunks = rawChunks ?? []
 
+  // Fetch RAG documents for this subject
+  const { data: ragDocs } = await adminSupabase
+    .from('rag_documents')
+    .select('id, title, doc_type, chunk_count, index_status, indexed_at, created_at')
+    .eq('subject_id', subject_id)
+    .order('created_at', { ascending: false })
+
   // Group chunks by unit_number
   const groupedChunks = {}
   for (const chunk of chunks) {
@@ -86,9 +94,13 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
     ? chunks.reduce((s, c) => s + (c.parse_confidence ?? 0), 0) / chunks.length
     : null
 
+  const ragEnabled    = subject.rag_enabled ?? false
+  const ragDocCount   = (ragDocs ?? []).filter(d => d.index_status === 'indexed').length
+
   const TABS = [
     { id: 'chunks',  label: 'Chunks' },
     { id: 'quality', label: 'Parse Quality' },
+    { id: 'rag',     label: 'Reference Docs', badge: ragDocCount > 0 ? ragDocCount : null },
   ]
 
   return (
@@ -188,6 +200,11 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
                 {Math.round(avgConfidence * 100)}%
               </span>
             )}
+            {t.id === 'rag' && t.badge != null && (
+              <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-light text-teal">
+                {t.badge}
+              </span>
+            )}
           </Link>
         ))}
       </div>
@@ -241,6 +258,15 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
           chunks={chunks}
           subjectId={subject_id}
           latestFileId={latestFile?.id ?? null}
+        />
+      )}
+
+      {/* Reference Docs tab (Phase 11E) */}
+      {activeTab === 'rag' && (
+        <RagDocsTab
+          docs={ragDocs ?? []}
+          subjectId={subject_id}
+          ragEnabled={ragEnabled}
         />
       )}
     </div>

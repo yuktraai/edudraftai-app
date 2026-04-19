@@ -6,6 +6,8 @@ import { buildLessonNotesPrompt } from '@/lib/ai/prompts/lesson-notes'
 import { buildMcqBankPrompt } from '@/lib/ai/prompts/mcq-bank'
 import { buildQuestionBankPrompt } from '@/lib/ai/prompts/question-bank'
 import { buildTestPlanPrompt } from '@/lib/ai/prompts/test-plan'
+import { embedText } from '@/lib/rag/embedder'
+import { queryContext } from '@/lib/rag/pinecone'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -96,7 +98,7 @@ export async function POST(request) {
   // ── 4. Verify subject belongs to user's college ───────────────────────────
   const { data: subject } = await adminSupabase
     .from('subjects')
-    .select('id, name, semester, college_id')
+    .select('id, name, semester, college_id, rag_enabled')
     .eq('id', subject_id)
     .eq('college_id', profile.college_id)
     .single()
@@ -143,7 +145,48 @@ export async function POST(request) {
     subtopics:    selectedSubtopics,
     ...params,   // topic + subtopics from params override if present
   }
-  const messages = buildPrompt(content_type, promptParams)
+
+  // ── 7b. RAG context injection (Phase 11D) ─────────────────────────────────
+  // If rag_enabled, embed the topic+subtopics query and retrieve top-5 chunks
+  // from Pinecone. Inject into the last user message as reference material.
+  // Any Pinecone failure is caught and skipped — generation must never fail due to RAG.
+  let ragChunksUsed = 0
+  let messagesWithRag = buildPrompt(content_type, promptParams)
+
+  if (subject.rag_enabled) {
+    try {
+      const ragQuery    = `${promptParams.topic}: ${selectedSubtopics.join(', ')}`
+      const queryVec    = await embedText(ragQuery)
+      const ragResults  = await queryContext(subject_id, queryVec, 5)
+
+      if (ragResults.length > 0) {
+        ragChunksUsed = ragResults.length
+
+        const ragBlock = [
+          '',
+          '--- REFERENCE MATERIAL (use as context, do not copy verbatim) ---',
+          'The following excerpts are from approved reference materials for this subject.',
+          'Use them to ensure accuracy and alignment with the prescribed curriculum.',
+          'Do NOT reproduce these passages directly. Synthesize and teach from them.',
+          '',
+          ...ragResults.map((r, i) => `[${i + 1}] ${r.text}`),
+          '--- END REFERENCE MATERIAL ---',
+        ].join('\n')
+
+        // Append RAG block to the last user message
+        messagesWithRag = messagesWithRag.map((msg, i) =>
+          i === messagesWithRag.length - 1 && msg.role === 'user'
+            ? { ...msg, content: msg.content + ragBlock }
+            : msg
+        )
+      }
+    } catch (ragErr) {
+      // Non-fatal — log and continue without RAG context
+      logger.error('[generate] RAG retrieval failed, continuing without context', ragErr.message)
+    }
+  }
+
+  const messages = messagesWithRag
 
   // ── 8a. Detect regeneration ───────────────────────────────────────────────
   // A regeneration is when the same user generates the same content_type for
@@ -172,6 +215,7 @@ export async function POST(request) {
       content_type,
       prompt_params:     { ...promptParams, is_regeneration: isRegeneration },
       status:            'generating',
+      metadata:          { rag_chunks_used: ragChunksUsed },
     })
     .select('id')
     .single()
