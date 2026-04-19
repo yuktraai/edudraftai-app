@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { SyllabusRowActions } from './SyllabusRowActions'
 
 export const metadata = { title: 'Syllabus Manager — EduDraftAI' }
 
@@ -161,15 +162,7 @@ export default async function SuperAdminSyllabusPage() {
                           {formatDate(s.latest_file?.created_at)}
                         </td>
                         <td className="px-5 py-3">
-                          <div className="flex items-center gap-2">
-                            <Link href={`/super-admin/syllabus/${s.id}`}>
-                              <button className="text-teal text-xs font-medium hover:underline">View</button>
-                            </Link>
-                            <span className="text-border">|</span>
-                            <Link href={`/super-admin/syllabus/upload?subject_id=${s.id}`}>
-                              <button className="text-teal text-xs font-medium hover:underline">Upload</button>
-                            </Link>
-                          </div>
+                          <SyllabusRowActions subjectId={s.id} subjectName={s.name} />
                         </td>
                       </tr>
                     ))}

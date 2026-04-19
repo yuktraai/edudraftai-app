@@ -60,8 +60,9 @@ export async function POST(request) {
 
     // ── 2. Parse multipart form ───────────────────────────────────────────────
     step = 'formdata'
-    const formData = await request.formData()
-    const file     = formData.get('file')
+    const formData      = await request.formData()
+    const file          = formData.get('file')
+    const reparseFileId = formData.get('reparse_file_id') // re-parse existing stored PDF
 
     // Accept subject_ids (JSON array) or legacy subject_id (single string)
     let subjectIds = []
@@ -73,16 +74,47 @@ export async function POST(request) {
       subjectIds = [rawId]
     }
 
-    if (!file || subjectIds.length === 0)
-      return Response.json({ error: 'Missing file or subject_id(s)', code: 'MISSING_FIELDS' }, { status: 400 })
+    if (subjectIds.length === 0)
+      return Response.json({ error: 'Missing subject_id(s)', code: 'MISSING_FIELDS' }, { status: 400 })
 
-    if (file.type !== 'application/pdf')
-      return Response.json({ error: 'Only PDF files are allowed', code: 'INVALID_TYPE' }, { status: 400 })
+    if (!file && !reparseFileId)
+      return Response.json({ error: 'Provide either a PDF file or reparse_file_id', code: 'MISSING_FIELDS' }, { status: 400 })
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    let buffer
+    let filename
 
-    if (buffer.length > 10 * 1024 * 1024)
-      return Response.json({ error: 'File too large (max 10MB)', code: 'FILE_TOO_LARGE' }, { status: 413 })
+    if (reparseFileId) {
+      // ── Re-parse path: download existing PDF from Supabase Storage ──────────
+      step = 'reparse-fetch'
+      const { data: existingFile } = await adminSupabase
+        .from('syllabus_files')
+        .select('id, storage_path, file_name')
+        .eq('id', reparseFileId)
+        .single()
+
+      if (!existingFile?.storage_path)
+        return Response.json({ error: 'File record not found or missing storage path', code: 'FILE_NOT_FOUND' }, { status: 404 })
+
+      const { data: storageData, error: downloadErr } = await adminSupabase.storage
+        .from('syllabuses')
+        .download(existingFile.storage_path)
+
+      if (downloadErr || !storageData)
+        return Response.json({ error: `Storage download failed: ${downloadErr?.message ?? 'unknown'}`, code: 'STORAGE_ERROR' }, { status: 500 })
+
+      buffer   = Buffer.from(await storageData.arrayBuffer())
+      filename = existingFile.file_name ?? existingFile.storage_path.split('/').pop()
+    } else {
+      // ── New upload path ────────────────────────────────────────────────────
+      if (file.type !== 'application/pdf')
+        return Response.json({ error: 'Only PDF files are allowed', code: 'INVALID_TYPE' }, { status: 400 })
+
+      buffer   = Buffer.from(await file.arrayBuffer())
+      filename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+
+      if (buffer.length > 10 * 1024 * 1024)
+        return Response.json({ error: 'File too large (max 10MB)', code: 'FILE_TOO_LARGE' }, { status: 413 })
+    }
 
     // ── 3. Validate all subjects exist (no college_id restriction for super_admin) ─
     step = 'validate-subjects'
@@ -101,18 +133,26 @@ export async function POST(request) {
     collegeId = collegeIds[0]
     const primarySubject = subjects[0]
 
-    // ── 4. Upload PDF to Supabase Storage ────────────────────────────────────
+    // ── 4. Upload PDF to Supabase Storage (skip on reparse — file already stored) ─
     step = 'storage-upload'
-    const filename    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const storagePath = `${collegeId}/${primarySubject.id}/${filename}`
 
-    const { error: uploadErr } = await adminSupabase.storage
-      .from('syllabuses')
-      .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: true })
+    if (!reparseFileId) {
+      const { error: uploadErr } = await adminSupabase.storage
+        .from('syllabuses')
+        .upload(storagePath, buffer, { contentType: 'application/pdf', upsert: true })
 
-    if (uploadErr) throw new Error(`Storage upload failed: ${uploadErr.message}`)
+      if (uploadErr) throw new Error(`Storage upload failed: ${uploadErr.message}`)
+    }
 
-    // ── 5. Insert syllabus_files rows (one per subject_id) ───────────────────
+    // ── 5a. Delete old syllabus_files for these subjects (cleanup before re-insert) ─
+    step = 'delete-old-files'
+    await adminSupabase
+      .from('syllabus_files')
+      .delete()
+      .in('subject_id', subjectIds)
+
+    // ── 5b. Insert fresh syllabus_files rows (one per subject_id) ────────────
     step = 'insert-syllabus-files'
     const fileRows = subjects.map(s => ({
       subject_id:   s.id,

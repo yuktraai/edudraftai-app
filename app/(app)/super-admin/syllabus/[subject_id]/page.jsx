@@ -5,6 +5,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/Badge'
 import { ChunksEditor } from './ChunksEditor'
 import { ParseQualityTab } from './ParseQualityTab'
+import { ClearSyllabusButton } from '../ClearSyllabusButton'
 
 export const metadata = { title: 'Subject Syllabus — EduDraftAI' }
 
@@ -109,14 +110,21 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
               <span className="font-mono ml-1">{subject.code}</span>
             </p>
           </div>
-          <Link href={`/super-admin/syllabus/upload?subject_id=${subject_id}`}>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-2 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
-              Re-upload PDF
-            </button>
-          </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            <ClearSyllabusButton
+              subjectId={subject_id}
+              subjectName={subject.name}
+              redirectTo="/super-admin/syllabus"
+            />
+            <Link href={`/super-admin/syllabus/upload?subject_id=${subject_id}`}>
+              <button className="inline-flex items-center gap-2 px-4 py-2 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal-2 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                </svg>
+                Re-upload PDF
+              </button>
+            </Link>
+          </div>
         </div>
       </div>
 
