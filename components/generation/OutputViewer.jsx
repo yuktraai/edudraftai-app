@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FeedbackBar } from './FeedbackBar'
+import { MathContent } from '@/components/ui/MathContent'
 
 export function OutputViewer({ content, isStreaming, generationId }) {
   const [copied, setCopied] = useState(false)
@@ -74,12 +75,14 @@ export function OutputViewer({ content, isStreaming, generationId }) {
 
       {/* Content area */}
       <div className="p-5 max-h-[60vh] overflow-y-auto">
-        <pre className="whitespace-pre-wrap font-sans text-sm text-text leading-relaxed">
-          {content}
-          {isStreaming && (
+        {isStreaming ? (
+          <pre className="whitespace-pre-wrap font-sans text-sm text-text leading-relaxed">
+            {content}
             <span className="inline-block w-0.5 h-4 bg-teal animate-pulse ml-0.5 align-middle" />
-          )}
-        </pre>
+          </pre>
+        ) : (
+          content && <MathContent content={content} />
+        )}
 
         {/* Feedback shown once streaming is done */}
         {!isStreaming && content && (

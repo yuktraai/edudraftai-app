@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -11,9 +13,9 @@ function formatDate(iso) {
   })
 }
 
-function renderMarkdown(text) {
+function renderContent(text) {
   if (!text) return ''
-  return text
+  let html = text
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -23,6 +25,19 @@ function renderMarkdown(text) {
     .replace(/(<li>.*<\/li>(\n|$))+/gs, m => `<ul>${m}</ul>`)
     .replace(/\n\n+/g, '</p><p>')
     .replace(/^(?!<[hulo])(.+)$/gm, line => line.trim() ? `<p>${line}</p>` : '')
+  // Block math: \[ ... \]
+  html = html.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => {
+    try {
+      return '<div class="katex-block">' + katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false, output: 'html' }) + '</div>'
+    } catch { return `<div class="math-error">\\[${formula}\\]</div>` }
+  })
+  // Inline math: \( ... \)
+  html = html.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false, output: 'html' })
+    } catch { return `<span class="math-error">\\(${formula}\\)</span>` }
+  })
+  return html
 }
 
 const TYPE_LABELS = {
@@ -108,7 +123,7 @@ function LessonNotesContent({ text }) {
   return (
     <div
       className="print-prose"
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+      dangerouslySetInnerHTML={{ __html: renderContent(text) }}
     />
   )
 }
@@ -156,7 +171,7 @@ function QuestionBankContent({ text }) {
     <div className="print-qb">
       {sections.map((section, i) => (
         <div key={i} className="print-qb-section">
-          <div dangerouslySetInnerHTML={{ __html: renderMarkdown(section) }} />
+          <div dangerouslySetInnerHTML={{ __html: renderContent(section) }} />
         </div>
       ))}
     </div>
@@ -179,7 +194,7 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
 
   return (
     <div className="print-test-plan">
-      <div dangerouslySetInnerHTML={{ __html: renderMarkdown(processed) }} />
+      <div dangerouslySetInnerHTML={{ __html: renderContent(processed) }} />
     </div>
   )
 }

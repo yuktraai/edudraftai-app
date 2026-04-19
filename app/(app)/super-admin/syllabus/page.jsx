@@ -5,6 +5,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { SyllabusRowActions } from './SyllabusRowActions'
+import { SyllabusFilters } from './SyllabusFilters'
 
 export const metadata = { title: 'Syllabus Manager — EduDraftAI' }
 
@@ -26,7 +27,7 @@ function formatDate(dateStr) {
   })
 }
 
-export default async function SuperAdminSyllabusPage() {
+export default async function SuperAdminSyllabusPage({ searchParams }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -73,6 +74,11 @@ export default async function SuperAdminSyllabusPage() {
       .select('id, subject_id'),
   ])
 
+  // Extract active filters from searchParams
+  const activeCollegeId = searchParams?.college_id ?? ''
+  const activeDeptId    = searchParams?.dept_id    ?? ''
+  const activeQ         = searchParams?.q          ?? ''
+
   // Build lookup maps
   const collegeMap = Object.fromEntries((colleges ?? []).map(c => [c.id, c]))
   const deptMap    = Object.fromEntries((departments ?? []).map(d => [d.id, d]))
@@ -87,9 +93,36 @@ export default async function SuperAdminSyllabusPage() {
     chunkCountBySubject[c.subject_id] = (chunkCountBySubject[c.subject_id] ?? 0) + 1
   }
 
-  // Group by college
-  const grouped = {}
+  const totalSubjects = subjects?.length ?? 0
+
+  // Apply filters
+  const filteredSubjects = (subjects ?? []).filter((s) => {
+    if (activeCollegeId && s.college_id !== activeCollegeId) return false
+    if (activeDeptId    && s.department_id !== activeDeptId) return false
+    if (activeQ) {
+      const q = activeQ.toLowerCase()
+      if (!s.name.toLowerCase().includes(q) && !s.code.toLowerCase().includes(q)) return false
+    }
+    return true
+  })
+  const filteredTotal = filteredSubjects.length
+
+  // Build deduplicated filter option lists from ALL subjects (unfiltered)
+  const allColleges = (colleges ?? []).slice().sort((a, b) => a.name.localeCompare(b.name))
+  const seenDepts = new Set()
+  const allDepts = []
   for (const s of subjects ?? []) {
+    const dept = deptMap[s.department_id]
+    if (dept && !seenDepts.has(dept.id)) {
+      seenDepts.add(dept.id)
+      allDepts.push(dept)
+    }
+  }
+  allDepts.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Group filtered subjects by college
+  const grouped = {}
+  for (const s of filteredSubjects) {
     const college = collegeMap[s.college_id]
     const collegeId   = college?.id   ?? 'unknown'
     const collegeName = college?.name ?? 'Unknown College'
@@ -103,8 +136,7 @@ export default async function SuperAdminSyllabusPage() {
     })
   }
 
-  const collegeList   = Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name))
-  const totalSubjects = subjects?.length ?? 0
+  const collegeList = Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <div className="p-8 max-w-6xl">
@@ -112,13 +144,28 @@ export default async function SuperAdminSyllabusPage() {
         <div>
           <h1 className="font-heading text-2xl font-bold text-navy">Syllabus Manager</h1>
           <p className="text-muted text-sm mt-1">
-            {totalSubjects} subject{totalSubjects !== 1 ? 's' : ''} across {collegeList.length} college{collegeList.length !== 1 ? 's' : ''}
+            {totalSubjects} subject{totalSubjects !== 1 ? 's' : ''} across {(colleges ?? []).length} college{(colleges ?? []).length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link href="/super-admin/syllabus/upload">
-          <Button>Upload Syllabus PDF</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/super-admin/syllabus/copy">
+            <Button variant="secondary">Copy Syllabus</Button>
+          </Link>
+          <Link href="/super-admin/syllabus/upload">
+            <Button>Upload Syllabus PDF</Button>
+          </Link>
+        </div>
       </div>
+
+      <SyllabusFilters
+        colleges={allColleges}
+        departments={allDepts}
+        activeCollegeId={activeCollegeId}
+        activeDeptId={activeDeptId}
+        activeQ={activeQ}
+        total={totalSubjects}
+        filtered={filteredTotal}
+      />
 
       {collegeList.length > 0 ? (
         <div className="space-y-8">

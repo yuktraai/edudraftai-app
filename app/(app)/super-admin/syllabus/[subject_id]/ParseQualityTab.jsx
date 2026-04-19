@@ -34,6 +34,7 @@ function InlineEditor({ chunk, onDone }) {
   const [topic,        setTopic]        = useState(chunk.topic)
   const [subtopicsText,setSubtopicsText]= useState((chunk.subtopics ?? []).join('\n'))
   const [saving,       setSaving]       = useState(false)
+  const [deleting,     setDeleting]     = useState(false)
   const [error,        setError]        = useState(null)
 
   async function handleSave() {
@@ -49,6 +50,20 @@ function InlineEditor({ chunk, onDone }) {
     if (!res.ok) {
       const j = await res.json()
       setError(j.error ?? 'Save failed')
+      return
+    }
+    onDone()
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this chunk? This cannot be undone.')) return
+    setDeleting(true)
+    setError(null)
+    const res = await fetch(`/api/super-admin/chunks/${chunk.id}`, { method: 'DELETE' })
+    setDeleting(false)
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error ?? 'Delete failed')
       return
     }
     onDone()
@@ -75,16 +90,24 @@ function InlineEditor({ chunk, onDone }) {
       <div className="flex gap-2">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || deleting}
           className="px-3 py-1 bg-teal text-white text-xs font-semibold rounded-lg hover:bg-teal-2 disabled:opacity-50 transition-colors"
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
         <button
           onClick={() => onDone()}
-          className="px-3 py-1 bg-bg text-muted text-xs rounded-lg border border-border hover:text-text transition-colors"
+          disabled={deleting}
+          className="px-3 py-1 bg-bg text-muted text-xs rounded-lg border border-border hover:text-text transition-colors disabled:opacity-50"
         >
           Cancel
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleting || saving}
+          className="px-3 py-1 bg-red-50 text-error text-xs rounded-lg border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+        >
+          {deleting ? 'Deleting…' : 'Delete'}
         </button>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import ReactMarkdown from 'react-markdown'
+import { MathContent } from '@/components/ui/MathContent'
 import { FeedbackBar } from '@/components/generation/FeedbackBar'
 
 const TYPE_META = {
@@ -326,11 +326,7 @@ export default function DraftDetailPage() {
             <span className="text-sm text-muted">Generated content</span>
           </div>
           <div className="p-6 print-article">
-            <article className="prose prose-sm max-w-none prose-headings:text-navy prose-headings:font-heading prose-h2:text-lg prose-h3:text-base prose-p:text-text prose-li:text-text prose-strong:text-text prose-code:text-navy prose-code:bg-bg prose-code:rounded prose-code:px-1">
-              <ReactMarkdown>
-                {draft.raw_output ?? ''}
-              </ReactMarkdown>
-            </article>
+            <MathContent content={draft.raw_output ?? ''} />
             <FeedbackBar
               generationId={id}
               initialRating={feedback?.rating ?? null}

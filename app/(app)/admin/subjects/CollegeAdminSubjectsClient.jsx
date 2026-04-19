@@ -52,7 +52,7 @@ function DeptCheckboxList({ departments, selected, onChange }) {
 // ── Add Subject Modal ──────────────────────────────────────────────────────────
 function AddModal({ open, onClose, departments }) {
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', code: '', semester: '' })
+  const [form, setForm] = useState({ name: '', code: '', semester: '', has_math: false })
   const [selectedDepts, setSelectedDepts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -62,7 +62,7 @@ function AddModal({ open, onClose, departments }) {
   }
 
   function handleClose() {
-    setForm({ name: '', code: '', semester: '' })
+    setForm({ name: '', code: '', semester: '', has_math: false })
     setSelectedDepts([])
     setError(null)
     onClose()
@@ -83,6 +83,7 @@ function AddModal({ open, onClose, departments }) {
         name:           form.name,
         code:           form.code,
         semester:       Number(form.semester),
+        has_math:       form.has_math,
         department_ids: selectedDepts,
       }),
     })
@@ -158,6 +159,22 @@ function AddModal({ open, onClose, departments }) {
           )}
         </div>
 
+        {/* has_math toggle */}
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.has_math}
+            onChange={e => setForm(f => ({ ...f, has_math: e.target.checked }))}
+            className="accent-teal w-4 h-4 mt-0.5 shrink-0"
+          />
+          <div>
+            <span className="text-sm font-medium text-text">Contains mathematical formulas</span>
+            <p className="text-xs text-muted mt-0.5">
+              Marks this as a math-heavy subject. The AI will use strict LaTeX notation for all equations (e.g. Physics, Maths, Electronics).
+            </p>
+          </div>
+        </label>
+
         <div className="flex gap-3 pt-1">
           <Button type="submit" loading={loading} className="flex-1">
             Add Subject{selectedDepts.length > 1 ? ` (${selectedDepts.length} depts)` : ''}
@@ -177,6 +194,7 @@ function EditModal({ open, onClose, subject, departments = [] }) {
     code:          subject?.code ?? '',
     semester:      String(subject?.semester ?? ''),
     department_id: subject?.department_id ?? '',
+    has_math:      subject?.has_math ?? false,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -239,6 +257,22 @@ function EditModal({ open, onClose, subject, departments = [] }) {
             </select>
           </div>
         )}
+
+        {/* has_math toggle */}
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={form.has_math}
+            onChange={e => setForm(f => ({ ...f, has_math: e.target.checked }))}
+            className="accent-teal w-4 h-4 mt-0.5 shrink-0"
+          />
+          <div>
+            <span className="text-sm font-medium text-text">Contains mathematical formulas</span>
+            <p className="text-xs text-muted mt-0.5">
+              Marks this as a math-heavy subject (Physics, Maths, Electronics, etc.). AI will use strict LaTeX notation.
+            </p>
+          </div>
+        </label>
 
         <div className="flex gap-3 pt-1">
           <Button type="submit" loading={loading} className="flex-1">Save Changes</Button>

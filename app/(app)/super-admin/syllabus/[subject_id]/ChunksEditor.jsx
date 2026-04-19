@@ -94,16 +94,24 @@ export function ChunksEditor({ chunk, subjectId }) {
           <div className="flex gap-2">
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || deleting}
               className="px-3 py-1.5 bg-teal text-white text-xs font-semibold rounded-lg hover:bg-teal-2 disabled:opacity-50 transition-colors"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button
               onClick={() => { setEditing(false); setError(null) }}
-              className="px-3 py-1.5 bg-bg text-muted text-xs font-semibold rounded-lg hover:text-text border border-border transition-colors"
+              disabled={deleting}
+              className="px-3 py-1.5 bg-bg text-muted text-xs font-semibold rounded-lg hover:text-text border border-border transition-colors disabled:opacity-50"
             >
               Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting || saving}
+              className="px-3 py-1.5 bg-red-50 text-error text-xs font-semibold rounded-lg hover:bg-red-100 border border-red-200 transition-colors disabled:opacity-50"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
             </button>
           </div>
         </div>
