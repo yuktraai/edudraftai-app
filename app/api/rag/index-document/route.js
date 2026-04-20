@@ -225,14 +225,16 @@ export async function POST(request) {
       .update({ index_status: 'failed', error_message: errorMessage })
       .eq('id', docId)
 
-    await adminSupabase.from('system_logs').insert({
-      college_id: collegeId,
-      user_id:    user.id,
-      event_type: 'rag_index_failed',
-      severity:   'error',
-      message:    `RAG indexing failed for doc "${title}" (${docId}): ${short}`,
-      metadata:   { doc_id: docId, subject_id, error: err.message, classified: short },
-    }).catch(() => {})
+    try {
+      await adminSupabase.from('system_logs').insert({
+        college_id: collegeId,
+        user_id:    user.id,
+        event_type: 'rag_index_failed',
+        severity:   'error',
+        message:    `RAG indexing failed for doc "${title}" (${docId}): ${short}`,
+        metadata:   { doc_id: docId, subject_id, error: err.message, classified: short },
+      })
+    } catch (_) { /* non-fatal */ }
 
     return Response.json({ error: short, detail }, { status: 422 })
   }
