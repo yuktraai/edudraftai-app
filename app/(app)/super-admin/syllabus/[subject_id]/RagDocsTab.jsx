@@ -56,9 +56,15 @@ function UploadForm({ subjectId, onSuccess }) {
     try {
       const res  = await fetch('/api/rag/index-document', { method: 'POST', body: fd })
       const json = await res.json()
-      if (!res.ok) { setError(json.error ?? 'Upload failed'); return }
 
-      setMsg('Document accepted — indexing in background (may take ~30s for large PDFs)')
+      if (!res.ok) {
+        // 422 = indexing error (scanned PDF, etc.) — show detail if available
+        const msg = json.detail ? `${json.error}: ${json.detail}` : (json.error ?? 'Upload failed')
+        setError(msg)
+        return
+      }
+
+      setMsg(json.message ?? 'Indexed successfully!')
       setTitle(''); setDocType('textbook'); setFile(null)
       if (fileRef.current) fileRef.current.value = ''
       onSuccess()
@@ -128,7 +134,7 @@ function UploadForm({ subjectId, onSuccess }) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Uploading…
+            Parsing &amp; Indexing… (may take 30–60s)
           </>
         ) : 'Upload & Index'}
       </button>
