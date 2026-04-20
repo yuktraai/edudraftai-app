@@ -400,6 +400,12 @@ export default function LandingPage() {
           <div>EduDraftAI by <strong>Yuktra AI</strong></div>
           <div>AI drafting for academic teams that need speed with structure.</div>
         </div>
+        <div className="lp-wrap" style={{ paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '12px', display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link href="/privacy-policy" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '12px', textDecoration: 'none' }}>Privacy Policy</Link>
+          <Link href="/terms" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '12px', textDecoration: 'none' }}>Terms &amp; Conditions</Link>
+          <Link href="/refund-policy" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '12px', textDecoration: 'none' }}>Refund Policy</Link>
+          <Link href="/contact" style={{ color: 'rgba(255,255,255,0.55)', fontSize: '12px', textDecoration: 'none' }}>Contact Us</Link>
+        </div>
       </footer>
 
     </div>
