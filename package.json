@@ -13,6 +13,7 @@
     "@pinecone-database/pinecone": "^7.2.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
+    "docx": "^9.6.1",
     "katex": "^0.16.45",
     "next": "14.2.35",
     "openai": "^6.34.0",
