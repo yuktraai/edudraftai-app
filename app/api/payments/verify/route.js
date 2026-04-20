@@ -53,8 +53,18 @@ export async function POST(request) {
       .single()
 
     if (!purchase) {
-      // Already processed or not found — return success to avoid double-credit
-      return Response.json({ success: true, already_processed: true })
+      // Already processed — look up the paid record to return credits_added
+      const { data: paidPurchase } = await adminSupabase
+        .from('credit_purchases')
+        .select('credits_to_award')
+        .eq('razorpay_order_id', razorpay_order_id)
+        .single()
+
+      return Response.json({
+        success:           true,
+        already_processed: true,
+        credits_added:     paidPurchase?.credits_to_award ?? 0,
+      })
     }
 
     // Confirm it belongs to this admin's college

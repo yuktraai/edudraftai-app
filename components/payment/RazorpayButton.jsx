@@ -75,7 +75,8 @@ export function RazorpayButton({ pkg, onSuccess, isPopular }) {
               return
             }
 
-            onSuccess?.({ credits_added: verifyData.credits_added })
+            // Fall back to pkg.credits if API doesn't return credits_added
+            onSuccess?.({ credits_added: verifyData.credits_added ?? pkg.credits })
           } catch {
             setError('Network error during verification. Please contact support.')
           } finally {
