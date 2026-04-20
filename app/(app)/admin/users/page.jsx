@@ -17,7 +17,7 @@ export default async function AdminUsersPage() {
 
   const { data: users } = await adminSupabase
     .from('users')
-    .select('id, name, email, role, is_active, created_at')
+    .select('id, name, email, role, is_active, created_at, demo_credits_used')
     .eq('college_id', profile.college_id)
     .neq('role', 'super_admin')
     .order('created_at', { ascending: false })
@@ -62,6 +62,7 @@ export default async function AdminUsersPage() {
                 <th className="text-left px-5 py-3 font-medium text-muted">Email</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Role</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Credits</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wide">Demo</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Status</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Actions</th>
               </tr>
@@ -95,6 +96,9 @@ export default async function AdminUsersPage() {
                       }`}>
                         {balance}
                       </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <span className="text-xs text-muted">{u.demo_credits_used ?? 0}/3</span>
                     </td>
                     <td className="px-5 py-3"><StatusBadge active={u.is_active} /></td>
                     <td className="px-5 py-3">

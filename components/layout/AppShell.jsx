@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Sidebar }       from './Sidebar'
-import { CreditWarning } from '@/components/ui/CreditWarning'
+import { Sidebar }         from './Sidebar'
+import { CreditWarning }   from '@/components/ui/CreditWarning'
+import { OnboardingTour }  from '@/components/onboarding/OnboardingTour'
 
 /**
  * AppShell — wraps the app layout with a responsive sidebar.
  * Desktop: sidebar always visible on the left.
  * Mobile (< lg): sidebar hidden, hamburger toggles a slide-out drawer + backdrop.
  */
-export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, children }) {
+export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, userId, onboardingCompleted, children }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -93,6 +94,11 @@ export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, c
           {children}
         </main>
       </div>
+
+      {/* Onboarding tour — lecturer only, first login only, desktop only */}
+      {!onboardingCompleted && role === 'lecturer' && (
+        <OnboardingTour userId={userId} />
+      )}
     </div>
   )
 }

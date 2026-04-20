@@ -5,7 +5,7 @@ import { FeedbackBar } from './FeedbackBar'
 import { MathContent } from '@/components/ui/MathContent'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 
-export function OutputViewer({ content, isStreaming, generationId, contentType }) {
+export function OutputViewer({ content, isStreaming, generationId, contentType, isDemo = false }) {
   const [copied,  setCopied]  = useState(false)
   const [showKey, setShowKey] = useState(true) // default: teacher view (with answers)
 
@@ -98,14 +98,61 @@ export function OutputViewer({ content, isStreaming, generationId, contentType }
 
       {/* Content area */}
       <div className="p-5 max-h-[60vh] overflow-y-auto">
-        {isStreaming ? (
-          <pre className="whitespace-pre-wrap font-sans text-sm text-text leading-relaxed">
-            {content}
-            <span className="inline-block w-0.5 h-4 bg-teal animate-pulse ml-0.5 align-middle" />
-          </pre>
-        ) : (
-          displayContent && <MathContent content={displayContent} />
+        {!isStreaming && isDemo && (
+          <div className="mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <svg className="w-4 h-4 text-warning shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-warning">Demo Output</p>
+              <p className="text-xs text-amber-700 mt-0.5">This was generated using one of your 3 free demo credits. Ask your college admin to allocate credits for full access.</p>
+            </div>
+          </div>
         )}
+
+        {/* Content area with optional demo watermark */}
+        <div className="relative">
+          {!isStreaming && isDemo && (
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute', inset: 0, zIndex: 1,
+                backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 60px, rgba(0,0,0,0.03) 60px, rgba(0,0,0,0.03) 120px)',
+                pointerEvents: 'none',
+                overflow: 'hidden',
+              }}
+            >
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} style={{
+                  position: 'absolute',
+                  top: `${i * 14}%`,
+                  left: '-20%',
+                  width: '140%',
+                  textAlign: 'center',
+                  transform: 'rotate(-30deg)',
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: 'rgba(0,0,0,0.04)',
+                  letterSpacing: '0.1em',
+                  userSelect: 'none',
+                  whiteSpace: 'nowrap',
+                }}>
+                  EduDraftAI Demo &nbsp;&nbsp;&nbsp; EduDraftAI Demo &nbsp;&nbsp;&nbsp; EduDraftAI Demo
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            {isStreaming ? (
+              <pre className="whitespace-pre-wrap font-sans text-sm text-text leading-relaxed">
+                {content}
+                <span className="inline-block w-0.5 h-4 bg-teal animate-pulse ml-0.5 align-middle" />
+              </pre>
+            ) : (
+              displayContent && <MathContent content={displayContent} />
+            )}
+          </div>
+        </div>
 
         {!isStreaming && content && (
           <FeedbackBar generationId={generationId} />

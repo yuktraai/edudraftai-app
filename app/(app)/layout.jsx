@@ -11,7 +11,7 @@ export default async function AppLayout({ children }) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('name, role, college_id, is_active')
+    .select('name, role, college_id, is_active, onboarding_completed')
     .eq('id', user.id)
     .single()
 
@@ -64,6 +64,8 @@ export default async function AppLayout({ children }) {
       name={profile.name}
       creditBalance={creditBalance}
       hasZeroBalanceLecturers={hasZeroBalanceLecturers}
+      userId={user.id}
+      onboardingCompleted={profile.onboarding_completed ?? false}
     >
       {children}
     </AppShell>

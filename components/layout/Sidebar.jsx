@@ -164,7 +164,7 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
 
       {/* Credit balance badge — lecturer & college_admin */}
       {creditBalance !== null && (
-        <div className="mx-3 mt-3 px-3 py-2.5 rounded-lg bg-navy-2 flex items-center justify-between">
+        <div id="sidebar-credits" className="mx-3 mt-3 px-3 py-2.5 rounded-lg bg-navy-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
@@ -191,6 +191,12 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
           return (
             <Link
               key={href}
+              id={
+                href === '/generate' ? 'nav-generate' :
+                href === '/drafts'   ? 'nav-drafts'   :
+                href === '/syllabus' ? 'nav-syllabus'  :
+                undefined
+              }
               href={href}
               className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive

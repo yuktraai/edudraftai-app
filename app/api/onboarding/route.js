@@ -50,6 +50,20 @@ export async function POST(request) {
       return Response.json({ error: insertError.message, code: 'INSERT_FAILED' }, { status: 500 })
     }
 
+    // Grant 3 demo credits — non-fatal if it fails
+    try {
+      await adminSupabase.rpc('grant_credits', {
+        p_target_user_id: user.id,
+        p_college_id:     null,
+        p_amount:         3,
+        p_reason:         'initial_grant',
+        p_granted_by:     user.id,
+      })
+    } catch (creditErr) {
+      logger.error('[/api/onboarding] failed to grant demo credits', creditErr)
+      // Non-fatal — user can still proceed, admin can grant manually
+    }
+
     return Response.json({ data: { ok: true } }, { status: 200 })
   } catch (error) {
     logger.error('[/api/onboarding] unexpected error', error)

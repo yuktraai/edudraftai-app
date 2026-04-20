@@ -118,15 +118,43 @@ export async function POST(request) {
     chunk = data
   }
 
+  // ── 6b. Demo credit detection ─────────────────────────────────────────────
+  // A generation is "demo" if the user has used < 3 demo credits AND has no
+  // admin-granted credits (i.e. only initial_grant entries in ledger)
+  let isDemo = false
+  const { data: userRecord } = await adminSupabase
+    .from('users')
+    .select('demo_credits_used')
+    .eq('id', user.id)
+    .single()
+
+  const demoCreditsUsed = userRecord?.demo_credits_used ?? 0
+
+  if (demoCreditsUsed < 3) {
+    // Check if user has any non-initial-grant positive credits
+    const { data: adminCredits } = await adminSupabase
+      .from('credit_ledger')
+      .select('id')
+      .eq('user_id', user.id)
+      .in('reason', ['admin_grant', 'monthly_allocation', 'refund'])
+      .limit(1)
+
+    const hasAdminCredits = (adminCredits?.length ?? 0) > 0
+    if (!hasAdminCredits) {
+      isDemo = true
+    }
+  }
+
   // ── 6. Credit balance check ───────────────────────────────────────────────
   const { data: balance } = await adminSupabase
     .rpc('get_credit_balance', { p_user_id: user.id })
 
-  if ((balance ?? 0) <= 0)
-    return Response.json(
-      { error: 'Insufficient credits. Contact your college admin to top up.', code: 'NO_CREDITS' },
-      { status: 402 }
-    )
+  if ((balance ?? 0) <= 0) {
+    const noCreditsMsg = demoCreditsUsed >= 3
+      ? 'Your 3 demo credits have been used. Ask your college admin to allocate credits to continue generating.'
+      : 'Insufficient credits. Contact your college admin to allocate credits to your account.'
+    return Response.json({ error: noCreditsMsg, code: 'NO_CREDITS' }, { status: 402 })
+  }
 
   // ── 7. Build prompt params (merge chunk context + user params) ────────────
   // Phase 10C: TopicPicker now emits multi-selected subtopics as an array.
@@ -215,7 +243,7 @@ export async function POST(request) {
       content_type,
       prompt_params:     { ...promptParams, is_regeneration: isRegeneration },
       status:            'generating',
-      metadata:          { rag_chunks_used: ragChunksUsed },
+      metadata:          { rag_chunks_used: ragChunksUsed, is_demo: isDemo },
     })
     .select('id')
     .single()
@@ -304,6 +332,14 @@ export async function POST(request) {
         p_college_id:    profile.college_id,
         p_generation_id: generationId,
       })
+
+      // Increment demo credits used counter
+      if (isDemo) {
+        await adminSupabase
+          .from('users')
+          .update({ demo_credits_used: demoCreditsUsed + 1 })
+          .eq('id', user.id)
+      }
 
     } catch (err) {
       failed = true
