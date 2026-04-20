@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useRef, useEffect } from 'react'
 import { SignOutButton } from '@/components/layout/SignOutButton'
 
 const NAV_LINKS = {
@@ -35,6 +36,103 @@ const ROLE_LABELS = {
   super_admin:   'Yuktra AI (Super Admin)',
   college_admin: 'College Admin',
   lecturer:      'Lecturer',
+}
+
+// ── Inline name editor ────────────────────────────────────────────────────────
+function NameEditor({ initialName }) {
+  const [editing,  setEditing]  = useState(false)
+  const [value,    setValue]    = useState(initialName)
+  const [display,  setDisplay]  = useState(initialName)
+  const [saving,   setSaving]   = useState(false)
+  const [error,    setError]    = useState(null)
+  const inputRef = useRef(null)
+  const router   = useRouter()
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  // Sync if prop changes (e.g. server refresh)
+  useEffect(() => { setDisplay(initialName); setValue(initialName) }, [initialName])
+
+  async function handleSave() {
+    const trimmed = value.trim()
+    if (!trimmed) { setError('Name cannot be empty'); return }
+    if (trimmed === display) { setEditing(false); return }
+
+    setSaving(true); setError(null)
+    try {
+      const res  = await fetch('/api/profile/update-name', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ name: trimmed }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setError(json.error ?? 'Update failed'); return }
+      setDisplay(trimmed)
+      setEditing(false)
+      router.refresh()  // re-fetches server layout so dashboard greeting also updates
+    } catch {
+      setError('Network error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter')  handleSave()
+    if (e.key === 'Escape') { setValue(display); setEditing(false); setError(null) }
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-1.5">
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          maxLength={100}
+          className="w-full px-2 py-1 text-sm bg-navy-2 text-white border border-teal/40 rounded-lg focus:outline-none focus:border-teal"
+          placeholder="Your name"
+        />
+        {error && <p className="text-[10px] text-error">{error}</p>}
+        <div className="flex gap-1.5">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 text-[11px] font-semibold px-2 py-1 bg-teal text-white rounded-md hover:bg-teal-2 disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            onClick={() => { setValue(display); setEditing(false); setError(null) }}
+            className="flex-1 text-[11px] font-semibold px-2 py-1 bg-navy-2 text-slate-300 rounded-md hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group flex items-center gap-1.5 w-full text-left"
+      title="Click to edit your name"
+    >
+      <p className="text-sm font-medium text-white truncate flex-1">{display}</p>
+      <svg
+        className="w-3.5 h-3.5 text-slate-500 group-hover:text-teal shrink-0 transition-colors"
+        fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round"
+          d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+      </svg>
+    </button>
+  )
 }
 
 export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, onClose }) {
@@ -114,7 +212,7 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
 
       {/* User info + sign out */}
       <div className="px-5 py-4 border-t border-navy-2">
-        <p className="text-sm font-medium text-white truncate">{name}</p>
+        <NameEditor initialName={name} />
         <p className="text-xs text-slate-400 mt-0.5">{ROLE_LABELS[role] ?? role}</p>
         <SignOutButton />
       </div>
