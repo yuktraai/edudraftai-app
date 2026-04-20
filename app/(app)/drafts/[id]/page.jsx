@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { MathContent } from '@/components/ui/MathContent'
 import { FeedbackBar } from '@/components/generation/FeedbackBar'
+import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 
 const TYPE_META = {
   lesson_notes:  { label: 'Lesson Notes',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -78,6 +79,7 @@ export default function DraftDetailPage() {
   const [feedback,   setFeedback]   = useState(null) // { rating, feedback_text }
   const [showDelete, setShowDelete] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
+  const [showKey,    setShowKey]    = useState(true)  // teacher view: answer key visible by default
 
   useEffect(() => {
     if (!id) return
@@ -94,8 +96,16 @@ export default function DraftDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  // Parse answer key — memoised so it only re-runs when raw_output changes
+  const { content: questionsOnly, answerKey } = useMemo(
+    () => splitAnswerKey(draft?.raw_output ?? ''),
+    [draft?.raw_output]
+  )
+  const hasAnswerKey   = !!answerKey
+  const displayContent = showKey ? (draft?.raw_output ?? '') : questionsOnly
+
   async function handleCopy() {
-    await navigator.clipboard.writeText(draft.raw_output ?? '')
+    await navigator.clipboard.writeText(displayContent)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -104,8 +114,9 @@ export default function DraftDetailPage() {
     const topic    = draft.prompt_params?.topic ?? 'draft'
     const type     = draft.content_type ?? 'content'
     const date     = new Date(draft.created_at).toISOString().slice(0, 10)
-    const filename = `${type}_${topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${date}.txt`
-    const blob     = new Blob([draft.raw_output ?? ''], { type: 'text/plain;charset=utf-8' })
+    const keySuffix = hasAnswerKey ? (showKey ? '_with_key' : '_questions_only') : ''
+    const filename = `${type}_${topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${date}${keySuffix}.txt`
+    const blob     = new Blob([displayContent], { type: 'text/plain;charset=utf-8' })
     const url      = URL.createObjectURL(blob)
     const a        = document.createElement('a')
     a.href         = url
@@ -114,8 +125,9 @@ export default function DraftDetailPage() {
     URL.revokeObjectURL(url)
   }
 
-  function handlePrint() {
-    window.open(`/print/${id}?autoprint=1`, '_blank')
+  function handlePrint(withKey = true) {
+    const keyParam = hasAnswerKey ? `&key=${withKey ? '1' : '0'}` : ''
+    window.open(`/print/${id}?autoprint=1${keyParam}`, '_blank')
   }
 
   async function handleDelete() {
@@ -226,7 +238,27 @@ export default function DraftDetailPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 no-print shrink-0">
+            <div className="flex items-center gap-2 no-print shrink-0 flex-wrap">
+              {/* Answer key toggle — only for MCQ / Question Bank */}
+              {hasAnswerKey && (
+                <button
+                  onClick={() => setShowKey(p => !p)}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                    showKey
+                      ? 'bg-teal text-white border-teal hover:bg-teal-2'
+                      : 'text-muted border-border hover:border-teal hover:text-teal'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    {showKey
+                      ? <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      : <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    }
+                  </svg>
+                  {showKey ? 'Answer Key: ON' : 'Answer Key: OFF'}
+                </button>
+              )}
+
               <button
                 onClick={handleCopy}
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
@@ -258,15 +290,39 @@ export default function DraftDetailPage() {
                 Export TXT
               </button>
 
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                </svg>
-                Print / PDF
-              </button>
+              {/* Print buttons — split into two when answer key exists */}
+              {hasAnswerKey ? (
+                <>
+                  <button
+                    onClick={() => handlePrint(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                    </svg>
+                    Print w/ Key
+                  </button>
+                  <button
+                    onClick={() => handlePrint(false)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                    </svg>
+                    Print w/o Key
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => handlePrint()}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+                  </svg>
+                  Print / PDF
+                </button>
+              )}
 
               <button
                 onClick={() => setShowDelete(true)}
@@ -319,14 +375,23 @@ export default function DraftDetailPage() {
 
         {/* Content viewer */}
         <div className="bg-surface border border-border rounded-xl overflow-hidden print-card">
-          <div className="px-5 py-3 border-b border-border bg-bg flex items-center gap-2 print-toolbar">
-            <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm text-muted">Generated content</span>
+          <div className="px-5 py-3 border-b border-border bg-bg flex items-center justify-between print-toolbar">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm text-muted">Generated content</span>
+            </div>
+            {hasAnswerKey && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                showKey ? 'bg-teal-light text-teal border-teal' : 'bg-bg text-muted border-border'
+              }`}>
+                {showKey ? 'Teacher View (with answers)' : 'Student View (questions only)'}
+              </span>
+            )}
           </div>
           <div className="p-6 print-article">
-            <MathContent content={draft.raw_output ?? ''} />
+            <MathContent content={displayContent} />
             <FeedbackBar
               generationId={id}
               initialRating={feedback?.rating ?? null}

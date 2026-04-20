@@ -66,6 +66,8 @@ export default async function PrintPage({ params, searchParams }) {
   }
 
   const autoprint = searchParams?.autoprint === '1'
+  // key=0 means student view (no answer key), key=1 or absent means teacher view (with key)
+  const showKey   = searchParams?.key !== '0'
 
   return (
     <PrintDocument
@@ -74,6 +76,7 @@ export default async function PrintPage({ params, searchParams }) {
       subjectInfo={subjectInfo}
       lecturer={lecturer}
       autoprint={autoprint}
+      showKey={showKey}
     />
   )
 }

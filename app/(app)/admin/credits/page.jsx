@@ -69,6 +69,104 @@ function LedgerDrawer({ userId, onClose }) {
   )
 }
 
+// ── Reclaim (Deallocate) Modal ────────────────────────────────────────────────
+function ReclaimModal({ user, onClose, onSuccess }) {
+  const maxAmount     = user.balance
+  const [amount,  setAmount]  = useState(maxAmount)
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState(null)
+
+  async function handleReclaim() {
+    if (!amount || amount <= 0) return
+    setError(null)
+    setLoading(true)
+    try {
+      const res  = await fetch('/api/credits/deallocate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ target_user_id: user.id, amount }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setError(json.error ?? 'Reclaim failed'); setLoading(false); return }
+      onSuccess(json.credits_reclaimed ?? amount)
+    } catch {
+      setError('Network error. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading text-lg font-bold text-navy">Reclaim Credits</h2>
+          <button onClick={onClose} className="text-muted hover:text-text transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="bg-bg border border-border rounded-xl px-4 py-3">
+          <p className="text-sm font-medium text-text">{user.name}</p>
+          <p className="text-xs text-muted">{user.email}</p>
+          <p className="text-xs text-muted mt-1">Current balance: <strong className="text-text">{user.balance}</strong> credits</p>
+        </div>
+
+        {maxAmount === 0 ? (
+          <div className="text-sm text-muted text-center py-4 bg-bg rounded-xl border border-border">
+            This user has no credits to reclaim.
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-text mb-1.5">Credits to reclaim</label>
+              <div className="flex gap-2 mb-3">
+                {[maxAmount, Math.floor(maxAmount / 2)].filter((v, i, a) => a.indexOf(v) === i && v > 0).map(n => (
+                  <button key={n} type="button" onClick={() => setAmount(n)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      amount === n ? 'bg-warning text-white border-warning' : 'bg-bg border-border text-muted hover:border-warning hover:text-warning'
+                    }`}>
+                    {n === maxAmount ? `All (${n})` : `Half (${n})`}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number" min="1" max={maxAmount} value={amount}
+                onChange={e => setAmount(Math.min(maxAmount, Math.max(1, Number(e.target.value))))}
+                className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-warning focus:outline-none"
+              />
+              <p className="text-xs text-muted mt-1.5">
+                Credits returned to pool — user will have <strong>{maxAmount - amount}</strong> remaining.
+              </p>
+            </div>
+
+            {error && <p className="text-sm text-error bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+
+            <div className="flex gap-3">
+              <button onClick={onClose}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-xl hover:border-text hover:text-text transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleReclaim} disabled={loading || amount <= 0 || amount > maxAmount}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-warning text-white rounded-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                {loading ? 'Reclaiming…' : `Reclaim ${amount} Credits`}
+              </button>
+            </div>
+          </>
+        )}
+
+        {maxAmount === 0 && (
+          <button onClick={onClose}
+            className="w-full px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-xl hover:border-text hover:text-text transition-colors">
+            Close
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Allocate Modal ────────────────────────────────────────────────────────────
 function AllocateModal({ user, poolBalance, onClose, onSuccess }) {
   const [amount,  setAmount]  = useState(10)
@@ -156,7 +254,8 @@ export default function AdminCreditsPage() {
   const [data,          setData]          = useState(null)
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState(null)
-  const [modal,         setModal]         = useState(null)
+  const [modal,         setModal]         = useState(null)   // allocate modal user
+  const [reclaimModal,  setReclaimModal]  = useState(null)   // reclaim modal user
   const [expandedUser,  setExpandedUser]  = useState(null)
   const [toast,         setToast]         = useState(null)
 
@@ -180,6 +279,13 @@ export default function AdminCreditsPage() {
   function handleAllocateSuccess() {
     setModal(null)
     setToast('Credits allocated successfully!')
+    setTimeout(() => setToast(null), 3000)
+    load()
+  }
+
+  function handleReclaimSuccess(creditsReclaimed) {
+    setReclaimModal(null)
+    setToast(`${creditsReclaimed} credit${creditsReclaimed !== 1 ? 's' : ''} returned to pool!`)
     setTimeout(() => setToast(null), 3000)
     load()
   }
@@ -297,6 +403,13 @@ export default function AdminCreditsPage() {
                           {expandedUser === u.id ? 'Hide' : 'Ledger'}
                         </button>
                         <button
+                          onClick={() => setReclaimModal(u)}
+                          disabled={u.balance === 0}
+                          className="px-3 py-1.5 text-xs font-medium text-warning border border-warning rounded-lg hover:bg-warning hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          Reclaim
+                        </button>
+                        <button
                           onClick={() => setModal(u)}
                           disabled={pool_balance === 0}
                           className="px-3 py-1.5 text-xs font-medium text-teal border border-teal rounded-lg hover:bg-teal hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -315,6 +428,14 @@ export default function AdminCreditsPage() {
           </table>
         )}
       </div>
+
+      {reclaimModal && (
+        <ReclaimModal
+          user={reclaimModal}
+          onClose={() => setReclaimModal(null)}
+          onSuccess={handleReclaimSuccess}
+        />
+      )}
 
       {modal && (
         <AllocateModal

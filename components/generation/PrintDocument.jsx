@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function PrintDocument({ generation, college, subjectInfo = {}, lecturer, autoprint }) {
+export function PrintDocument({ generation, college, subjectInfo = {}, lecturer, autoprint, showKey = true }) {
   useEffect(() => {
     if (autoprint) {
       const t = setTimeout(() => window.print(), 700)
@@ -210,6 +211,10 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
   }, [autoprint])
 
   const contentType = generation.content_type
+
+  // Filter answer key from raw_output when showKey=false
+  const { content: questionsOnly } = splitAnswerKey(generation.raw_output ?? '')
+  const printContent = showKey ? (generation.raw_output ?? '') : questionsOnly
 
   return (
     <>
@@ -378,6 +383,11 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
         <div>
           <div className="no-print-bar-title">
             {TYPE_LABELS[contentType] ?? contentType} — Print Preview
+            {(contentType === 'mcq_bank' || contentType === 'question_bank') && (
+              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: showKey ? '#00B4A6' : '#94a3b8' }}>
+                ({showKey ? 'with answer key' : 'questions only'})
+              </span>
+            )}
           </div>
           <div className="no-print-bar-meta">
             {subjectInfo?.name}{subjectInfo?.semester ? ` · Semester ${subjectInfo.semester}` : ''}
@@ -394,12 +404,12 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
           generation={generation}
         />
 
-        {contentType === 'lesson_notes'  && <LessonNotesContent text={generation.raw_output} />}
-        {contentType === 'mcq_bank'      && <MCQContent          text={generation.raw_output} />}
-        {contentType === 'question_bank' && <QuestionBankContent text={generation.raw_output} />}
+        {contentType === 'lesson_notes'  && <LessonNotesContent text={printContent} />}
+        {contentType === 'mcq_bank'      && <MCQContent          text={printContent} />}
+        {contentType === 'question_bank' && <QuestionBankContent text={printContent} />}
         {contentType === 'test_plan'     && (
           <TestPlanContent
-            text={generation.raw_output}
+            text={printContent}
             college={college}
             generation={generation}
             subjectInfo={subjectInfo}

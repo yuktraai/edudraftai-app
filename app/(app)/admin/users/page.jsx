@@ -98,7 +98,7 @@ export default async function AdminUsersPage() {
                     </td>
                     <td className="px-5 py-3"><StatusBadge active={u.is_active} /></td>
                     <td className="px-5 py-3">
-                      <UsersClient userId={u.id} isActive={u.is_active} role={u.role} />
+                      <UsersClient userId={u.id} userName={u.name} isActive={u.is_active} role={u.role} />
                     </td>
                   </tr>
                 )
