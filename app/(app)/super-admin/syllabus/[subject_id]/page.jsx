@@ -74,7 +74,7 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
   // Fetch RAG documents for this subject
   const { data: ragDocs } = await adminSupabase
     .from('rag_documents')
-    .select('id, title, doc_type, chunk_count, index_status, indexed_at, created_at')
+    .select('id, title, doc_type, chunk_count, index_status, indexed_at, created_at, error_message')
     .eq('subject_id', subject_id)
     .order('created_at', { ascending: false })
 

@@ -111,6 +111,10 @@ function UploadForm({ subjectId, onSuccess }) {
         {file && (
           <p className="text-xs text-muted">{file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)</p>
         )}
+        <p className="text-[11px] text-muted">
+          ⚠️ Must be a <strong>text-based PDF</strong> (not a scanned image). If you get a &quot;no extractable text&quot; error,
+          open the PDF in <strong>Google Drive</strong> first — it auto-applies OCR — then download and re-upload.
+        </p>
       </div>
 
       <button
@@ -177,9 +181,17 @@ function RagToggle({ subjectId, enabled }) {
 // ── Doc row ───────────────────────────────────────────────────────────────────
 
 function DocRow({ doc, onDelete }) {
-  const [deleting, setDeleting] = useState(false)
+  const [deleting,     setDeleting]     = useState(false)
+  const [showErrorMsg, setShowErrorMsg] = useState(false)
+
   const typeConf   = DOC_TYPE_LABELS[doc.doc_type]  ?? { label: doc.doc_type, cls: 'bg-bg text-muted border-border' }
   const statusConf = STATUS_CONFIG[doc.index_status] ?? { label: doc.index_status, cls: 'bg-bg text-muted border-border' }
+  const isFailed   = doc.index_status === 'failed'
+
+  // Parse the error message: "short: detail" — split on first colon
+  const errorParts  = doc.error_message ? doc.error_message.split(': ') : []
+  const errorShort  = errorParts[0] ?? 'Indexing failed'
+  const errorDetail = errorParts.slice(1).join(': ')
 
   async function handleDelete() {
     if (!confirm(`Delete "${doc.title}"? This will remove it from the AI knowledge base.`)) return
@@ -190,32 +202,64 @@ function DocRow({ doc, onDelete }) {
   }
 
   return (
-    <tr className="hover:bg-bg transition-colors">
-      <td className="px-4 py-3">
-        <p className="text-sm font-medium text-text">{doc.title}</p>
-        <p className="text-xs text-muted mt-0.5">{formatDate(doc.indexed_at ?? doc.created_at)}</p>
-      </td>
-      <td className="px-4 py-3">
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${typeConf.cls}`}>
-          {typeConf.label}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-xs text-muted">{doc.chunk_count ?? '—'}</td>
-      <td className="px-4 py-3">
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${statusConf.cls} ${statusConf.pulse ? 'animate-pulse' : ''}`}>
-          {statusConf.label}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="text-xs text-error hover:underline font-medium disabled:opacity-50"
-        >
-          {deleting ? 'Deleting…' : 'Delete'}
-        </button>
-      </td>
-    </tr>
+    <>
+      <tr className="hover:bg-bg transition-colors">
+        <td className="px-4 py-3">
+          <p className="text-sm font-medium text-text">{doc.title}</p>
+          <p className="text-xs text-muted mt-0.5">{formatDate(doc.indexed_at ?? doc.created_at)}</p>
+        </td>
+        <td className="px-4 py-3">
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${typeConf.cls}`}>
+            {typeConf.label}
+          </span>
+        </td>
+        <td className="px-4 py-3 text-xs text-muted">{doc.chunk_count ?? '—'}</td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${statusConf.cls} ${statusConf.pulse ? 'animate-pulse' : ''}`}>
+              {statusConf.label}
+            </span>
+            {isFailed && doc.error_message && (
+              <button
+                onClick={() => setShowErrorMsg(p => !p)}
+                className="text-error hover:text-error/70 transition-colors"
+                title="View error details"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-xs text-error hover:underline font-medium disabled:opacity-50"
+          >
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </td>
+      </tr>
+
+      {/* Expanded error row */}
+      {isFailed && showErrorMsg && doc.error_message && (
+        <tr className="bg-red-50">
+          <td colSpan={5} className="px-4 py-3">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 text-error shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-error">{errorShort}</p>
+                {errorDetail && <p className="text-xs text-error/80">{errorDetail}</p>}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 

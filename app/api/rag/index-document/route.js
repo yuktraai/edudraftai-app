@@ -25,6 +25,50 @@ import { randomUUID }    from 'crypto'
 const MAX_SIZE_BYTES = 20 * 1024 * 1024  // 20 MB
 const VALID_TYPES    = ['textbook', 'past_paper', 'model_answer', 'reference_notes']
 
+/**
+ * Classifies the indexing failure into a user-friendly reason.
+ * Returns { short, detail } strings.
+ */
+function classifyError(err) {
+  const msg = err?.message ?? ''
+
+  if (msg.includes('no extractable text') || msg.includes('No text found')) {
+    return {
+      short:  'Scanned PDF — no text layer',
+      detail: 'This PDF contains scanned images, not selectable text. Fix: open it in Google Drive (it auto-OCRs), then download as PDF. Or use Smallpdf.com → OCR PDF. Re-upload the OCR\'d version.',
+    }
+  }
+  if (msg.includes('Invalid PDF') || msg.includes('password') || msg.includes('encrypted')) {
+    return {
+      short:  'Invalid or password-protected PDF',
+      detail: 'The file is corrupted, password-protected, or not a valid PDF. Remove the password and re-upload.',
+    }
+  }
+  if (msg.includes('too few chunks') || msg.includes('empty')) {
+    return {
+      short:  'PDF has too little text',
+      detail: 'The PDF was parsed but produced almost no text. It may be mostly images or diagrams. Try a different version.',
+    }
+  }
+  if (msg.toLowerCase().includes('rate limit') || msg.includes('429')) {
+    return {
+      short:  'OpenAI rate limit during embedding',
+      detail: 'Hit OpenAI rate limits while generating embeddings. Wait a few minutes and try again.',
+    }
+  }
+  if (msg.toLowerCase().includes('pinecone') || msg.toLowerCase().includes('upsert')) {
+    return {
+      short:  'Pinecone upsert failed',
+      detail: `Vector database error: ${msg}. Check your PINECONE_API_KEY and index configuration.`,
+    }
+  }
+
+  return {
+    short:  'Indexing failed',
+    detail: msg || 'Unknown error during indexing.',
+  }
+}
+
 export async function POST(request) {
   // ── 1. Auth ────────────────────────────────────────────────────────────────
   const supabase = createClient()
@@ -115,14 +159,33 @@ export async function POST(request) {
   // ── 6. Return 202 immediately — indexing runs in background ────────────────
   ;(async () => {
     try {
-      // Parse PDF
-      const parsed  = await pdf(fileBuffer)
-      const rawText = parsed.text ?? ''
+      // Parse PDF text layer
+      let rawText = ''
+      try {
+        const parsed = await pdf(fileBuffer, { max: 0 })
+        rawText = parsed.text ?? ''
+      } catch (parseErr) {
+        // pdf-parse throws on some malformed PDFs — treat as no-text
+        logger.error('[POST /api/rag/index-document] pdf-parse threw', parseErr.message)
+        rawText = ''
+      }
 
-      if (!rawText.trim()) throw new Error('PDF produced no extractable text')
+      if (!rawText.trim()) {
+        throw new Error('PDF produced no extractable text')
+      }
+
+      // Filter out garbage lines (less than 3 chars, mostly symbols)
+      const cleanedText = rawText
+        .split('\n')
+        .filter(line => line.trim().length > 3)
+        .join('\n')
+
+      if (cleanedText.trim().length < 100) {
+        throw new Error('PDF has too little text (under 100 characters extracted). It may be a scanned or image-only PDF.')
+      }
 
       // Chunk + embed
-      const textChunks     = chunkText(rawText, 500, 50)
+      const textChunks     = chunkText(cleanedText, 500, 50)
       const embeddedChunks = await embedChunks(textChunks, {
         subjectId: subject_id,
         docId,
@@ -139,10 +202,11 @@ export async function POST(request) {
       await adminSupabase
         .from('rag_documents')
         .update({
-          index_status: 'indexed',
-          chunk_count:  embeddedChunks.length,
-          indexed_at:   new Date().toISOString(),
-          vector_ids:   vectorIds,
+          index_status:  'indexed',
+          chunk_count:   embeddedChunks.length,
+          indexed_at:    new Date().toISOString(),
+          vector_ids:    vectorIds,
+          error_message: null,
         })
         .eq('id', docId)
 
@@ -159,9 +223,14 @@ export async function POST(request) {
     } catch (err) {
       logger.error('[POST /api/rag/index-document] Indexing failed', err)
 
+      const { short, detail } = classifyError(err)
+
       await adminSupabase
         .from('rag_documents')
-        .update({ index_status: 'failed' })
+        .update({
+          index_status:  'failed',
+          error_message: `${short}: ${detail}`,
+        })
         .eq('id', docId)
 
       await adminSupabase.from('system_logs').insert({
@@ -169,8 +238,8 @@ export async function POST(request) {
         user_id:    user.id,
         event_type: 'rag_index_failed',
         severity:   'error',
-        message:    `RAG indexing failed for doc "${title}" (${docId}): ${err.message}`,
-        metadata:   { doc_id: docId, subject_id, error: err.message },
+        message:    `RAG indexing failed for doc "${title}" (${docId}): ${short}`,
+        metadata:   { doc_id: docId, subject_id, error: err.message, classified: short },
       }).catch(() => {})
     }
   })()
