@@ -1,21 +1,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
-import { Badge } from '@/components/ui/Badge'
 import { CollegeAdminSubjectsClient } from './CollegeAdminSubjectsClient'
+import { SubjectsTable } from './SubjectsTable'
 
 export const metadata = { title: 'Subjects — EduDraftAI' }
-
-function ParseStatusBadge({ status }) {
-  const map = {
-    completed:  { variant: 'success', label: 'Parsed' },
-    processing: { variant: 'info',    label: 'Processing' },
-    pending:    { variant: 'muted',   label: 'Pending' },
-    failed:     { variant: 'error',   label: 'Failed' },
-  }
-  const { variant, label } = map[status] ?? { variant: 'muted', label: 'No file' }
-  return <Badge variant={variant}>{label}</Badge>
-}
 
 export default async function AdminSubjectsPage() {
   const supabase = createClient()
@@ -33,12 +22,10 @@ export default async function AdminSubjectsPage() {
 
   const collegeId = profile.college_id
 
-  // Run three separate queries instead of nested joins — more reliable with PostgREST
+  // Fetch subjects + departments first
   const [
     { data: subjects },
     { data: departments },
-    { data: syllabus_files },
-    { data: chunks },
   ] = await Promise.all([
     adminSupabase
       .from('subjects')
@@ -53,20 +40,32 @@ export default async function AdminSubjectsPage() {
       .eq('college_id', collegeId)
       .eq('is_active', true)
       .order('name'),
-
-    adminSupabase
-      .from('syllabus_files')
-      .select('id, subject_id, parse_status, created_at, file_name')
-      .eq('college_id', collegeId)
-      .order('updated_at', { ascending: false }),
-
-    adminSupabase
-      .from('syllabus_chunks')
-      .select('id, subject_id')
-      .eq('college_id', collegeId),
   ])
 
-  // Build lookup maps
+  const subjectIds = (subjects ?? []).map(s => s.id)
+
+  // Fetch syllabus files + chunks scoped by subject IDs (avoids college_id mismatch)
+  const [
+    { data: syllabus_files },
+    { data: chunks },
+  ] = await Promise.all([
+    subjectIds.length > 0
+      ? adminSupabase
+          .from('syllabus_files')
+          .select('id, subject_id, parse_status, created_at, file_name')
+          .in('subject_id', subjectIds)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+
+    subjectIds.length > 0
+      ? adminSupabase
+          .from('syllabus_chunks')
+          .select('id, subject_id')
+          .in('subject_id', subjectIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  // Build enriched flat subject list
   const deptMap = Object.fromEntries((departments ?? []).map(d => [d.id, d]))
 
   const latestFileBySubject = {}
@@ -79,24 +78,16 @@ export default async function AdminSubjectsPage() {
     chunkCountBySubject[c.subject_id] = (chunkCountBySubject[c.subject_id] ?? 0) + 1
   }
 
-  // Group by department → semester
-  const grouped = {}
-  for (const subject of subjects ?? []) {
+  const flatSubjects = (subjects ?? []).map(subject => {
     const dept = deptMap[subject.department_id]
-    const deptId = dept?.id ?? 'unknown'
-    const deptName = dept?.name ?? 'Unknown Department'
-    if (!grouped[deptId]) grouped[deptId] = { id: deptId, name: deptName, semesters: {} }
-    const sem = subject.semester
-    if (!grouped[deptId].semesters[sem]) grouped[deptId].semesters[sem] = []
-    grouped[deptId].semesters[sem].push({
+    return {
       ...subject,
-      dept_name:   deptName,
+      dept_name:   dept?.name ?? 'Unknown Department',
+      dept_code:   dept?.code ?? '',
       chunk_count: chunkCountBySubject[subject.id] ?? 0,
       latest_file: latestFileBySubject[subject.id] ?? null,
-    })
-  }
-
-  const deptList = Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name))
+    }
+  })
 
   return (
     <div className="p-8 max-w-5xl">
@@ -105,7 +96,7 @@ export default async function AdminSubjectsPage() {
         <div>
           <h1 className="font-heading text-2xl font-bold text-navy">Subjects</h1>
           <p className="text-muted text-sm mt-1">
-            {subjects?.length ?? 0} subject{subjects?.length !== 1 ? 's' : ''} across all departments
+            {flatSubjects.length} subject{flatSubjects.length !== 1 ? 's' : ''} across all departments
           </p>
         </div>
         <CollegeAdminSubjectsClient mode="add-button" departments={departments ?? []} />
@@ -124,72 +115,11 @@ export default async function AdminSubjectsPage() {
         </p>
       </div>
 
-      {deptList.length > 0 ? (
-        <div className="space-y-8">
-          {deptList.map((dept) => (
-            <div key={dept.id}>
-              <h2 className="font-heading text-base font-bold text-navy mb-3">{dept.name}</h2>
-              {Object.entries(dept.semesters)
-                .sort(([a], [b]) => Number(a) - Number(b))
-                .map(([sem, semSubjects]) => (
-                  <div key={sem} className="mb-4">
-                    <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 px-1">
-                      Semester {sem}
-                    </p>
-                    <div className="bg-surface border border-border rounded-xl overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border bg-bg">
-                            <th className="text-left px-5 py-3 font-medium text-muted">Subject</th>
-                            <th className="text-left px-5 py-3 font-medium text-muted">Code</th>
-                            <th className="text-left px-5 py-3 font-medium text-muted">Topics</th>
-                            <th className="text-left px-5 py-3 font-medium text-muted">Syllabus</th>
-                            <th className="text-left px-5 py-3 font-medium text-muted">Status</th>
-                            <th className="text-left px-5 py-3 font-medium text-muted">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {semSubjects.map((s) => (
-                            <tr key={s.id} className="hover:bg-bg transition-colors">
-                              <td className="px-5 py-3 font-medium text-text">{s.name}</td>
-                              <td className="px-5 py-3 font-mono text-xs text-muted">{s.code}</td>
-                              <td className="px-5 py-3 text-muted">
-                                {s.chunk_count} topic{s.chunk_count !== 1 ? 's' : ''}
-                              </td>
-                              <td className="px-5 py-3">
-                                {s.latest_file
-                                  ? <ParseStatusBadge status={s.latest_file.parse_status} />
-                                  : <Badge variant="muted">Not uploaded</Badge>
-                                }
-                              </td>
-                              <td className="px-5 py-3">
-                                <Badge variant={s.is_active ? 'success' : 'error'}>
-                                  {s.is_active ? 'Active' : 'Inactive'}
-                                </Badge>
-                              </td>
-                              <td className="px-5 py-3">
-                                <CollegeAdminSubjectsClient
-                                  mode="row-actions"
-                                  subject={s}
-                                  departments={departments ?? []}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-surface border border-border rounded-xl p-12 text-center">
-          <p className="text-muted text-sm">No subjects yet.</p>
-          <p className="text-muted text-xs mt-1">Click &ldquo;+ Add Subject&rdquo; to create one.</p>
-        </div>
-      )}
+      {/* Subjects table with filters */}
+      <SubjectsTable
+        subjects={flatSubjects}
+        departments={departments ?? []}
+      />
     </div>
   )
 }

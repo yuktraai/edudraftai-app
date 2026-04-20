@@ -49,7 +49,7 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
   // Fetch subject (no college_id restriction for super_admin)
   const { data: subject } = await adminSupabase
     .from('subjects')
-    .select('id, name, code, semester, college_id, colleges(name), departments(name)')
+    .select('id, name, code, semester, college_id, rag_enabled, colleges(name), departments(name)')
     .eq('id', subject_id)
     .single()
 

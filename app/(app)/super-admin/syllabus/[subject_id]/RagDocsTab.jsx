@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 /**
@@ -148,6 +148,9 @@ function RagToggle({ subjectId, enabled }) {
   const [on,      setOn]      = useState(enabled)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+
+  // Sync local state when server re-renders with fresh prop (e.g. after navigation)
+  useEffect(() => { setOn(enabled) }, [enabled])
 
   async function toggle() {
     setLoading(true)
