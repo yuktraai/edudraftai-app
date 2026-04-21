@@ -55,18 +55,33 @@ export async function POST(request) {
       ? amount
       : currentBalance
 
-    // Insert negative ledger entry
-    const { error: insertErr } = await adminSupabase
+    // Deduct from user's ledger — use 'admin_grant' with negative amount (within allowed reasons)
+    const { error: ledgerErr } = await adminSupabase
       .from('credit_ledger')
       .insert({
         user_id:     target_user_id,
         college_id:  profile.college_id,
         amount:      -reclaim,
-        reason:      'admin_reclaim',
+        reason:      'admin_grant',
         granted_by:  user.id,
       })
 
-    if (insertErr) throw insertErr
+    if (ledgerErr) throw ledgerErr
+
+    // Restore credits to college pool (reason 'refund' = returned from user)
+    const { error: poolErr } = await adminSupabase
+      .from('college_credit_pool')
+      .insert({
+        college_id:  profile.college_id,
+        amount:      reclaim,
+        reason:      'refund',
+        created_by:  user.id,
+      })
+
+    if (poolErr) {
+      // Non-fatal — user ledger already updated, log and continue
+      logger.error('[POST /api/credits/deallocate] Pool restore failed', poolErr.message)
+    }
 
     logger.info('[POST /api/credits/deallocate] Reclaimed', {
       from: target_user_id, reclaim, by: user.id,

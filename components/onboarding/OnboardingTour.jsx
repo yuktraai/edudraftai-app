@@ -5,12 +5,17 @@ import { useEffect } from 'react'
 export function OnboardingTour({ userId }) {
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.innerWidth < 768) return  // skip on mobile
+    if (window.innerWidth < 768) return
 
-    const startTour = () => {
-      // driver.js CDN exposes window.driver.js.driver()
+    let attempts = 0
+
+    function tryStart() {
+      attempts++
       const factory = window?.driver?.js?.driver
-      if (!factory) return
+      if (!factory) {
+        if (attempts < 15) setTimeout(tryStart, 600)
+        return
+      }
 
       const allSteps = [
         {
@@ -25,7 +30,7 @@ export function OnboardingTour({ userId }) {
           element: '#nav-generate',
           popover: {
             title: 'Generate Content',
-            description: 'Start here to create lesson notes, MCQ banks, question banks, and test plans — locked to your approved syllabus.',
+            description: 'Start here to create lesson notes, MCQ banks, question banks, test plans and exam papers — locked to your approved syllabus.',
             side: 'right', align: 'start',
           },
         },
@@ -47,7 +52,6 @@ export function OnboardingTour({ userId }) {
         },
       ]
 
-      // Only include steps whose element exists in the DOM
       const steps = allSteps.filter(s => document.querySelector(s.element))
       if (steps.length === 0) return
 
@@ -62,7 +66,6 @@ export function OnboardingTour({ userId }) {
           driverObj.destroy()
         },
         onDestroyed: () => {
-          // Show a brief "You're ready!" toast
           const toast = document.createElement('div')
           toast.textContent = "You're all set! Start generating content."
           toast.style.cssText = [
@@ -79,8 +82,7 @@ export function OnboardingTour({ userId }) {
       driverObj.drive()
     }
 
-    // Wait for driver.js script to load + DOM to settle
-    const timer = setTimeout(startTour, 1000)
+    const timer = setTimeout(tryStart, 800)
     return () => clearTimeout(timer)
   }, [userId])
 

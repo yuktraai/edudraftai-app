@@ -12,6 +12,7 @@ export function SyllabusFilters({
   departments,
   activeCollegeId,
   activeDeptId,
+  activeSemester,
   activeQ,
   total,
   filtered,
@@ -19,7 +20,7 @@ export function SyllabusFilters({
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const hasFilters = !!(activeCollegeId || activeDeptId || activeQ)
+  const hasFilters = !!(activeCollegeId || activeDeptId || activeSemester || activeQ)
 
   function buildParams(overrides) {
     const params = new URLSearchParams(searchParams.toString())
@@ -80,6 +81,21 @@ export function SyllabusFilters({
             <option key={d.id} value={d.id}>
               {d.name}
             </option>
+          ))}
+        </select>
+
+        {/* Semester dropdown */}
+        <select
+          className={selectCls}
+          value={activeSemester ?? ''}
+          onChange={e => {
+            const qs = buildParams({ semester: e.target.value })
+            router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
+          }}
+        >
+          <option value="">All Semesters</option>
+          {[1,2,3,4,5,6].map(s => (
+            <option key={s} value={s}>Semester {s}</option>
           ))}
         </select>
 

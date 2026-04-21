@@ -8,6 +8,7 @@ const createSchema = z.object({
   name:           z.string().min(2).max(200),
   code:           z.string().min(1).max(20),
   semester:       z.number().int().min(1).max(6),
+  subject_type:   z.enum(['theory', 'practical']).optional().default('theory'),
   has_math:       z.boolean().optional().default(false),
   // Support both single department_id (legacy) and multi-select department_ids
   department_ids: z.array(z.string().uuid()).min(1).optional(),
@@ -106,6 +107,7 @@ export async function POST(request) {
       name:          parsed.data.name,
       code:          parsed.data.code.toUpperCase(),
       semester:      parsed.data.semester,
+      subject_type:  parsed.data.subject_type ?? 'theory',
       has_math:      parsed.data.has_math ?? false,
       college_id:    auth.profile.college_id,
       department_id: dept_id,

@@ -52,7 +52,7 @@ function DeptCheckboxList({ departments, selected, onChange }) {
 // ── Add Subject Modal ──────────────────────────────────────────────────────────
 function AddModal({ open, onClose, departments }) {
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', code: '', semester: '', has_math: false })
+  const [form, setForm] = useState({ name: '', code: '', semester: '', subject_type: 'theory', has_math: false })
   const [selectedDepts, setSelectedDepts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -62,7 +62,7 @@ function AddModal({ open, onClose, departments }) {
   }
 
   function handleClose() {
-    setForm({ name: '', code: '', semester: '', has_math: false })
+    setForm({ name: '', code: '', semester: '', subject_type: 'theory', has_math: false })
     setSelectedDepts([])
     setError(null)
     onClose()
@@ -83,6 +83,7 @@ function AddModal({ open, onClose, departments }) {
         name:           form.name,
         code:           form.code,
         semester:       Number(form.semester),
+        subject_type:   form.subject_type,
         has_math:       form.has_math,
         department_ids: selectedDepts,
       }),
@@ -134,6 +135,27 @@ function AddModal({ open, onClose, departments }) {
               <option key={s} value={s}>Semester {s}</option>
             ))}
           </select>
+        </div>
+
+        {/* Subject type */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-text">Subject Type *</label>
+          <div className="flex gap-2">
+            {['theory', 'practical'].map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, subject_type: type }))}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  form.subject_type === type
+                    ? 'bg-teal text-white border-teal'
+                    : 'bg-bg border-border text-muted hover:border-teal hover:text-teal'
+                }`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-1">
@@ -194,6 +216,7 @@ function EditModal({ open, onClose, subject, departments = [] }) {
     code:          subject?.code ?? '',
     semester:      String(subject?.semester ?? ''),
     department_id: subject?.department_id ?? '',
+    subject_type:  subject?.subject_type ?? 'theory',
     has_math:      subject?.has_math ?? false,
   })
   const [loading, setLoading] = useState(false)
@@ -244,6 +267,27 @@ function EditModal({ open, onClose, subject, departments = [] }) {
               <option key={s} value={s}>Semester {s}</option>
             ))}
           </select>
+        </div>
+
+        {/* Subject type */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-text">Subject Type *</label>
+          <div className="flex gap-2">
+            {['theory', 'practical'].map(type => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, subject_type: type }))}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  form.subject_type === type
+                    ? 'bg-teal text-white border-teal'
+                    : 'bg-bg border-border text-muted hover:border-teal hover:text-teal'
+                }`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {departments.length > 0 && (

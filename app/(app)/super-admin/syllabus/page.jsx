@@ -75,9 +75,10 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
   ])
 
   // Extract active filters from searchParams
-  const activeCollegeId = searchParams?.college_id ?? ''
-  const activeDeptId    = searchParams?.dept_id    ?? ''
-  const activeQ         = searchParams?.q          ?? ''
+  const activeCollegeId  = searchParams?.college_id ?? ''
+  const activeDeptId     = searchParams?.dept_id    ?? ''
+  const activeSemester   = searchParams?.semester   ?? ''
+  const activeQ          = searchParams?.q          ?? ''
 
   // Build lookup maps
   const collegeMap = Object.fromEntries((colleges ?? []).map(c => [c.id, c]))
@@ -99,6 +100,7 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
   const filteredSubjects = (subjects ?? []).filter((s) => {
     if (activeCollegeId && s.college_id !== activeCollegeId) return false
     if (activeDeptId    && s.department_id !== activeDeptId) return false
+    if (activeSemester  && String(s.semester) !== String(activeSemester)) return false
     if (activeQ) {
       const q = activeQ.toLowerCase()
       if (!s.name.toLowerCase().includes(q) && !s.code.toLowerCase().includes(q)) return false
@@ -162,6 +164,7 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
         departments={allDepts}
         activeCollegeId={activeCollegeId}
         activeDeptId={activeDeptId}
+        activeSemester={activeSemester}
         activeQ={activeQ}
         total={totalSubjects}
         filtered={filteredTotal}
@@ -209,7 +212,7 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
                           {formatDate(s.latest_file?.created_at)}
                         </td>
                         <td className="px-5 py-3">
-                          <SyllabusRowActions subjectId={s.id} subjectName={s.name} />
+                          <SyllabusRowActions subjectId={s.id} subjectName={s.name} hasFile={!!s.latest_file} />
                         </td>
                       </tr>
                     ))}

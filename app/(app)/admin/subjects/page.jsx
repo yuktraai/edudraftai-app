@@ -29,7 +29,7 @@ export default async function AdminSubjectsPage() {
   ] = await Promise.all([
     adminSupabase
       .from('subjects')
-      .select('id, name, code, semester, is_active, created_at, department_id')
+      .select('id, name, code, semester, subject_type, is_active, created_at, department_id')
       .eq('college_id', collegeId)
       .order('semester')
       .order('name'),
@@ -115,11 +115,40 @@ export default async function AdminSubjectsPage() {
         </p>
       </div>
 
-      {/* Subjects table with filters */}
-      <SubjectsTable
-        subjects={flatSubjects}
-        departments={departments ?? []}
-      />
+      {/* Subjects grouped by type */}
+      {(() => {
+        const theorySubjects    = flatSubjects.filter(s => (s.subject_type ?? 'theory') === 'theory')
+        const practicalSubjects = flatSubjects.filter(s => s.subject_type === 'practical')
+        const hasPractical      = practicalSubjects.length > 0
+
+        return (
+          <>
+            {/* Theory section — always shown */}
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="font-heading text-base font-bold text-navy">Theory Subjects</h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                  Theory
+                </span>
+              </div>
+              <SubjectsTable subjects={theorySubjects} departments={departments ?? []} />
+            </div>
+
+            {/* Practical section — only shown if any practical subjects exist */}
+            {hasPractical && (
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="font-heading text-base font-bold text-navy">Practical Subjects</h2>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                    Practical
+                  </span>
+                </div>
+                <SubjectsTable subjects={practicalSubjects} departments={departments ?? []} />
+              </div>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }

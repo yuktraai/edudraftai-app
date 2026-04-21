@@ -12,7 +12,7 @@ export default function AuthLayout({ children }) {
             EduDraftAI
           </span>
           <p className="mt-1 text-sm text-muted">
-            by Yuktra AI · SCTEVT diploma colleges
+            by Yuktra AI · For SCTE & VT diploma colleges
           </p>
         </div>
 

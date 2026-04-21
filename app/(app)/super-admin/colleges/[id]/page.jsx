@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { StatusBadge, RoleBadge } from '@/components/ui/Badge'
 import { CollegeLogo } from '@/components/ui/CollegeLogo'
-import { CollegeDetailClient } from './CollegeDetailClient'
+import { CollegeDetailClient, CollegeEditClient, MemberRoleClient, InviteLecturerClient } from './CollegeDetailClient'
 import { LogoUploadClient } from './LogoUploadClient'
 
 export const metadata = { title: 'College Detail — EduDraftAI' }
@@ -81,6 +81,26 @@ export default async function CollegeDetailPage({ params }) {
         ))}
       </div>
 
+      {/* Edit college details */}
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <h2 className="font-heading text-base font-bold text-navy mb-1">Edit College Details</h2>
+        <p className="text-muted text-sm mb-4">Update the college name and address.</p>
+        <CollegeEditClient
+          collegeId={params.id}
+          currentName={college.name}
+          currentAddress={college.address ?? ''}
+        />
+      </div>
+
+      {/* Invite lecturer */}
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <h2 className="font-heading text-base font-bold text-navy mb-1">Invite Lecturer</h2>
+        <p className="text-muted text-sm mb-4">
+          Send a magic-link invitation to a lecturer for this college.
+        </p>
+        <InviteLecturerClient collegeId={params.id} />
+      </div>
+
       {/* Assign college admin */}
       <div className="bg-surface border border-border rounded-xl p-6">
         <h2 className="font-heading text-base font-bold text-navy mb-1">Assign College Admin</h2>
@@ -106,6 +126,7 @@ export default async function CollegeDetailPage({ params }) {
                 <th className="text-left px-5 py-3 font-medium text-muted">Email</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Role</th>
                 <th className="text-left px-5 py-3 font-medium text-muted">Status</th>
+                <th className="text-left px-5 py-3 font-medium text-muted">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -115,6 +136,9 @@ export default async function CollegeDetailPage({ params }) {
                   <td className="px-5 py-3 text-muted">{m.email}</td>
                   <td className="px-5 py-3"><RoleBadge role={m.role} /></td>
                   <td className="px-5 py-3"><StatusBadge active={m.is_active} /></td>
+                  <td className="px-5 py-3">
+                    <MemberRoleClient userId={m.id} currentRole={m.role} collegeId={params.id} />
+                  </td>
                 </tr>
               ))}
             </tbody>

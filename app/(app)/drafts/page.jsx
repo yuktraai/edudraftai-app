@@ -130,6 +130,7 @@ function FolderPanel({ folders, unfolderedCount, selectedFolder, onSelect, onFol
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Escape') setEditingId(null) }}
+                  onBlur={() => setTimeout(() => setEditingId(null), 150)}
                   className="flex-1 text-sm px-2 py-1 rounded border border-teal outline-none bg-surface"
                   maxLength={80}
                 />
@@ -203,6 +204,7 @@ function FolderPanel({ folders, unfolderedCount, selectedFolder, onSelect, onFol
             value={newName}
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Escape') { setShowNew(false); setNewName('') } }}
+            onBlur={() => setTimeout(() => { if (!creating) { setShowNew(false); setNewName('') } }, 150)}
             placeholder="Folder name…"
             className="flex-1 text-sm px-2 py-1.5 rounded-lg border border-teal outline-none bg-surface"
             maxLength={80}

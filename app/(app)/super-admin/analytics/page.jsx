@@ -7,6 +7,7 @@ const TYPE_META = {
   mcq_bank:      { label: 'MCQ Bank',      icon: '✅', color: 'text-purple-700', bg: 'bg-purple-50', bar: 'bg-purple-500', border: 'border-purple-200' },
   question_bank: { label: 'Question Bank', icon: '📋', color: 'text-amber-700',  bg: 'bg-amber-50',  bar: 'bg-amber-500',  border: 'border-amber-200' },
   test_plan:     { label: 'Internal Test', icon: '🗓', color: 'text-teal',       bg: 'bg-teal-light', bar: 'bg-teal',      border: 'border-teal/30' },
+  exam_paper:    { label: 'Exam Paper',    icon: '📄', color: 'text-indigo-700', bg: 'bg-indigo-50',  bar: 'bg-indigo-500', border: 'border-indigo-200' },
 }
 
 const TYPE_LABELS = Object.fromEntries(Object.entries(TYPE_META).map(([k, v]) => [k, v.label]))

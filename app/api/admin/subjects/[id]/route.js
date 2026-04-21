@@ -10,6 +10,7 @@ const updateSchema = z.object({
   department_id: z.string().uuid().optional(),
   is_active:     z.boolean().optional(),
   has_math:      z.boolean().optional(),
+  subject_type:  z.enum(['theory', 'practical']).optional(),
 })
 
 async function getAdminProfile() {
