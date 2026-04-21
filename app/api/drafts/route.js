@@ -21,6 +21,8 @@ export async function GET(request) {
     const page         = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
     const content_type = searchParams.get('content_type') ?? ''
     const subject_id   = searchParams.get('subject_id') ?? ''
+    const folder_id    = searchParams.get('folder_id') ?? ''   // 'none' = unfoldered
+    const q            = (searchParams.get('q') ?? '').trim()  // keyword search
     const PAGE_SIZE    = 20
     const from         = (page - 1) * PAGE_SIZE
     const to           = from + PAGE_SIZE - 1
@@ -39,6 +41,8 @@ export async function GET(request) {
         raw_output,
         created_at,
         subject_id,
+        folder_id,
+        tags,
         subjects ( name, code )
       `, { count: 'exact' })
       .eq('college_id', profile.college_id)
@@ -53,6 +57,18 @@ export async function GET(request) {
 
     if (content_type) query = query.eq('content_type', content_type)
     if (subject_id)   query = query.eq('subject_id', subject_id)
+
+    // Folder filter
+    if (folder_id === 'none') {
+      query = query.is('folder_id', null)
+    } else if (folder_id) {
+      query = query.eq('folder_id', folder_id)
+    }
+
+    // Keyword search: filter on prompt_params->>'topic' via PostgREST JSONB text extraction
+    if (q) {
+      query = query.filter('prompt_params->>topic', 'ilike', `%${q}%`)
+    }
 
     const { data, error, count } = await query
     if (error) throw error

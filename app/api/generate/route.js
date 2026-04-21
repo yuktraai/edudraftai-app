@@ -318,6 +318,9 @@ export async function POST(request) {
       // ── 10. Save completed output + deduct credit ────────────────────────
       const ms = Date.now() - startTime
 
+      // Auto-tags: content_type label + subject name
+      const autoTags = [content_type, subject.name].filter(Boolean)
+
       await adminSupabase
         .from('content_generations')
         .update({
@@ -325,6 +328,7 @@ export async function POST(request) {
           status:         'completed',
           ai_model:       aiModel,
           generation_ms:  ms,
+          tags:           autoTags,
           updated_at:     new Date().toISOString(),
         })
         .eq('id', generationId)

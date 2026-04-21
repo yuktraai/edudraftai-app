@@ -5,6 +5,7 @@ const TYPE_META = {
   mcq_bank:      { label: 'MCQ Bank',        color: 'bg-purple-50 text-purple-700 border-purple-200' },
   question_bank: { label: 'Question Bank',   color: 'bg-amber-50 text-amber-700 border-amber-200' },
   test_plan:     { label: 'Internal Test',   color: 'bg-teal-light text-teal border-teal' },
+  exam_paper:    { label: 'Exam Paper',      color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 }
 
 const MODEL_LABELS = {
@@ -22,14 +23,28 @@ function estimateWords(text) {
   return Math.round(text.trim().split(/\s+/).length)
 }
 
-export function DraftCard({ draft }) {
-  const meta     = TYPE_META[draft.content_type] ?? { label: draft.content_type, color: 'bg-bg text-muted border-border' }
-  const topic    = draft.prompt_params?.topic ?? '—'
+// Friendly display labels for auto-tags
+const TAG_LABELS = {
+  lesson_notes:  'Lesson Notes',
+  mcq_bank:      'MCQ Bank',
+  question_bank: 'Question Bank',
+  test_plan:     'Internal Test',
+  exam_paper:    'Exam Paper',
+}
+
+export function DraftCard({ draft, folderName = null }) {
+  const meta        = TYPE_META[draft.content_type] ?? { label: draft.content_type, color: 'bg-bg text-muted border-border' }
+  const topic       = draft.prompt_params?.topic ?? '—'
   const parentTopic = draft.prompt_params?.parent_topic
-  const subject  = draft.subjects?.name ?? 'Unknown Subject'
-  const semester = draft.subjects?.semester
-  const words    = estimateWords(draft.raw_output)
-  const model    = MODEL_LABELS[draft.ai_model] ?? draft.ai_model ?? '—'
+  const subject     = draft.subjects?.name ?? 'Unknown Subject'
+  const semester    = draft.subjects?.semester
+  const words       = estimateWords(draft.raw_output)
+  const model       = MODEL_LABELS[draft.ai_model] ?? draft.ai_model ?? '—'
+
+  // Tags: filter out the content_type tag (shown as the type badge) and subject name (shown in subject line)
+  const displayTags = (draft.tags ?? []).filter(
+    t => !Object.keys(TYPE_META).includes(t) && t !== subject
+  )
 
   return (
     <Link href={`/drafts/${draft.id}`} className="block group">
@@ -56,6 +71,25 @@ export function DraftCard({ draft }) {
             </span>
           ) : topic}
         </p>
+
+        {/* Tags + folder badge */}
+        {(folderName || displayTags.length > 0) && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {folderName && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-navy/5 text-navy text-xs font-medium border border-navy/10">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                </svg>
+                {folderName}
+              </span>
+            )}
+            {displayTags.map(tag => (
+              <span key={tag} className="px-2 py-0.5 rounded-md bg-bg text-muted text-xs border border-border">
+                {TAG_LABELS[tag] ?? tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Footer: word count + model */}
         <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
