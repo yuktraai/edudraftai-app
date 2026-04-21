@@ -23,6 +23,10 @@ const TYPE_META = {
     title:       'Internal Test',
     description: 'Ready-to-print internal test paper.',
   },
+  exam_paper: {
+    title:       'Exam Paper',
+    description: 'SCTE&VT-pattern examination paper with Group A, B, C.',
+  },
 }
 
 const DIFFICULTY_OPTIONS = ['basic', 'intermediate', 'advanced']
@@ -104,6 +108,73 @@ function QuestionBankParams({ params, onChange }) {
   )
 }
 
+function ExamPaperParams({ params, onChange }) {
+  const EXAM_TYPES = [
+    { value: 'mid_semester',  label: 'Mid-Semester',  marks: 50,  duration: 90,  pattern: '10×1M + 5×4M + 1×10M = 50 Marks' },
+    { value: 'end_semester',  label: 'End-Semester',  marks: 100, duration: 180, pattern: '10×1M + 5×6M + 2×10M = 100 Marks' },
+  ]
+
+  function setExamType(et) {
+    const found = EXAM_TYPES.find(x => x.value === et)
+    onChange({
+      ...params,
+      exam_type:     et,
+      total_marks:   found?.marks    ?? 100,
+      duration_mins: found?.duration ?? 180,
+    })
+  }
+
+  const selected = EXAM_TYPES.find(x => x.value === (params.exam_type ?? 'end_semester'))
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-xs font-medium text-muted mb-2">Exam Type</label>
+        <div className="grid grid-cols-2 gap-3">
+          {EXAM_TYPES.map(et => (
+            <button
+              key={et.value}
+              type="button"
+              onClick={() => setExamType(et.value)}
+              className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
+                (params.exam_type ?? 'end_semester') === et.value
+                  ? 'bg-teal text-white border-teal'
+                  : 'bg-bg border-border text-text hover:border-teal'
+              }`}
+            >
+              <span className="text-sm font-semibold">{et.label}</span>
+              <span className={`text-xs mt-0.5 ${(params.exam_type ?? 'end_semester') === et.value ? 'text-white/80' : 'text-muted'}`}>
+                {et.pattern}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-muted mb-1">Total Marks</label>
+          <input
+            type="number"
+            value={params.total_marks ?? selected?.marks ?? 100}
+            onChange={e => onChange({ ...params, total_marks: Number(e.target.value) })}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-muted mb-1">Duration (minutes)</label>
+          <input
+            type="number"
+            value={params.duration_mins ?? selected?.duration ?? 180}
+            onChange={e => onChange({ ...params, duration_mins: Number(e.target.value) })}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TestPlanParams({ params, onChange }) {
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -136,6 +207,7 @@ const PARAM_DEFAULTS = {
   mcq_bank:      { count: 10, difficulty: 'intermediate' },
   question_bank: { marks_2: 5, marks_5: 4, marks_10: 2 },
   test_plan:     { total_marks: 30, duration_mins: 60 },
+  exam_paper:    { exam_type: 'end_semester', total_marks: 100, duration_mins: 180 },
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -285,6 +357,7 @@ export default function GenerateTypePage() {
           {type === 'mcq_bank'      && <McqBankParams      params={params} onChange={setParams} />}
           {type === 'question_bank' && <QuestionBankParams params={params} onChange={setParams} />}
           {type === 'test_plan'     && <TestPlanParams     params={params} onChange={setParams} />}
+          {type === 'exam_paper'    && <ExamPaperParams    params={params} onChange={setParams} />}
         </div>
 
         {/* Generate button */}

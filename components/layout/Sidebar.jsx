@@ -164,7 +164,14 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
 
       {/* Credit balance badge — lecturer & college_admin */}
       {creditBalance !== null && (
-        <div id="sidebar-credits" className="mx-3 mt-3 px-3 py-2.5 rounded-lg bg-navy-2 flex items-center justify-between">
+        <div
+          id="sidebar-credits"
+          className={`mx-3 mt-3 px-3 py-2.5 rounded-lg flex items-center justify-between ${
+            creditBalance <= 5 ? 'bg-red-900/20 border border-red-800/30' :
+            creditBalance <= 20 ? 'bg-amber-900/20 border border-amber-800/30' :
+            'bg-navy-2'
+          }`}
+        >
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round"
@@ -172,7 +179,12 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
             </svg>
             <span className="text-xs text-slate-300">Credits</span>
           </div>
-          <span className={`text-sm font-bold ${creditBalance > 0 ? 'text-teal' : 'text-error'}`}>
+          <span className={`text-sm font-bold ${
+            creditBalance > 20  ? 'text-teal'
+            : creditBalance > 5 ? 'text-warning'
+            : creditBalance > 0 ? 'text-error animate-pulse'
+            : 'text-error'
+          }`}>
             {creditBalance}
           </span>
         </div>

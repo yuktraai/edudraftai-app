@@ -87,8 +87,8 @@ export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, u
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          {/* Credit warning banner — shown for lecturer/college_admin when balance ≤ 5 */}
-          {creditBalance !== null && creditBalance <= 5 && (
+          {/* Credit warning banner — shown for lecturer/college_admin when balance ≤ 20 */}
+          {creditBalance !== null && creditBalance <= 20 && (
             <CreditWarning balance={creditBalance} role={role} />
           )}
           {children}

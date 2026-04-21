@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
+import { getAcademicYear } from '@/lib/utils/academicYear'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ const TYPE_LABELS = {
   mcq_bank:      'MCQ Bank',
   question_bank: 'Question Bank',
   test_plan:     'Internal Assessment Test',
+  exam_paper:    'Examination Paper',
 }
 
 // ─── Print Header ─────────────────────────────────────────────────────────────
@@ -90,6 +92,7 @@ function PrintHeader({ college, subjectInfo, generation }) {
         <div className="print-meta-line"><strong>Subject:</strong> {subjectInfo.name}</div>
         <div className="print-meta-line"><strong>Topic:</strong> {topic}</div>
         <div className="print-meta-line"><strong>Date:</strong> {date}</div>
+        <div className="print-meta-line"><strong>Academic Year:</strong> {getAcademicYear()}</div>
       </div>
     </div>
   )
@@ -196,6 +199,42 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
   return (
     <div className="print-test-plan">
       <div dangerouslySetInnerHTML={{ __html: renderContent(processed) }} />
+    </div>
+  )
+}
+
+// ─── Exam Paper Content ───────────────────────────────────────────────────────
+
+function ExamPaperContent({ text, generation, subjectInfo, showKey }) {
+  const examType = generation.prompt_params?.exam_type ?? 'end_semester'
+  const totalMarks = generation.prompt_params?.total_marks ?? 100
+  const duration = generation.prompt_params?.duration_mins ?? 180
+
+  // Split questions from answer key using delimiter
+  const DELIM = '--- ANSWER KEY ---'
+  const delimIdx = text?.indexOf(DELIM) ?? -1
+  const questionsText = delimIdx !== -1 ? text.slice(0, delimIdx).trimEnd() : (text ?? '')
+
+  return (
+    <div className="exam-paper">
+      {/* Instructions box */}
+      <div className="exam-instructions">
+        <div className="exam-instr-row">
+          <span><strong>Time:</strong> {Math.floor(duration / 60)} Hour{duration > 60 ? 's' : ''}</span>
+          <span><strong>Full Marks:</strong> {totalMarks}</span>
+          <span><strong>All questions are compulsory in Group A</strong></span>
+        </div>
+        <div className="exam-instr-note">
+          <strong>Instructions:</strong> Answer all questions in Group A. Attempt any 5 from Group B. Attempt any 2 from Group C. Start each group on a new page.
+        </div>
+        <div className="exam-roll">Roll No: ___________________________</div>
+      </div>
+
+      {/* Questions */}
+      <div
+        className="print-qb"
+        dangerouslySetInnerHTML={{ __html: renderContent(questionsText) }}
+      />
     </div>
   )
 }
@@ -358,6 +397,24 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
 
         .page-break { page-break-before: always; }
 
+        /* ── Exam Paper ── */
+        .exam-instructions {
+          border: 1.5px solid #0D1F3C;
+          border-radius: 4px;
+          padding: 12px 16px;
+          margin-bottom: 24px;
+          font-size: 12px;
+        }
+        .exam-instr-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 8px;
+          font-size: 12px;
+        }
+        .exam-instr-note { margin-bottom: 8px; line-height: 1.6; }
+        .exam-roll { font-size: 12px; margin-top: 8px; }
+
         /* ── Print media ── */
         @media print {
           .no-print-bar { display: none !important; }
@@ -414,6 +471,14 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
             generation={generation}
             subjectInfo={subjectInfo}
             lecturer={lecturer}
+          />
+        )}
+        {contentType === 'exam_paper' && (
+          <ExamPaperContent
+            text={printContent}
+            generation={generation}
+            subjectInfo={subjectInfo}
+            showKey={showKey}
           />
         )}
 

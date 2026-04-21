@@ -5,7 +5,7 @@ import { ContentTypeCard } from '@/components/generation/ContentTypeCard'
 
 export const metadata = { title: 'Generate Content — EduDraftAI' }
 
-const CONTENT_TYPES = ['lesson_notes', 'mcq_bank', 'question_bank', 'test_plan']
+const CONTENT_TYPES = ['lesson_notes', 'mcq_bank', 'question_bank', 'test_plan', 'exam_paper']
 
 export default async function GeneratePage() {
   const supabase = createClient()

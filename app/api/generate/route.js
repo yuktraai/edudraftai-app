@@ -6,6 +6,7 @@ import { buildLessonNotesPrompt } from '@/lib/ai/prompts/lesson-notes'
 import { buildMcqBankPrompt } from '@/lib/ai/prompts/mcq-bank'
 import { buildQuestionBankPrompt } from '@/lib/ai/prompts/question-bank'
 import { buildTestPlanPrompt } from '@/lib/ai/prompts/test-plan'
+import { buildExamPaperPrompt } from '@/lib/ai/prompts/exam-paper'
 import { embedText } from '@/lib/rag/embedder'
 import { queryContext } from '@/lib/rag/pinecone'
 import OpenAI from 'openai'
@@ -42,7 +43,7 @@ function checkRateLimit(userId) {
 }
 
 const bodySchema = z.object({
-  content_type: z.enum(['lesson_notes', 'mcq_bank', 'question_bank', 'test_plan']),
+  content_type: z.enum(['lesson_notes', 'mcq_bank', 'question_bank', 'test_plan', 'exam_paper']),
   subject_id:   z.string().uuid(),
   chunk_id:     z.string().uuid().nullable().optional(),
   params:       z.record(z.unknown()),
@@ -54,6 +55,7 @@ function buildPrompt(content_type, params) {
     case 'mcq_bank':       return buildMcqBankPrompt(params)
     case 'question_bank':  return buildQuestionBankPrompt(params)
     case 'test_plan':      return buildTestPlanPrompt(params)
+    case 'exam_paper':     return buildExamPaperPrompt(params)
   }
 }
 

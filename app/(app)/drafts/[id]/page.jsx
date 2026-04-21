@@ -5,12 +5,15 @@ import { useParams, useRouter } from 'next/navigation'
 import { MathContent } from '@/components/ui/MathContent'
 import { FeedbackBar } from '@/components/generation/FeedbackBar'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { toPlainText } from '@/lib/export/plainText'
 
 const TYPE_META = {
   lesson_notes:  { label: 'Lesson Notes',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
   mcq_bank:      { label: 'MCQ Bank',        color: 'bg-purple-50 text-purple-700 border-purple-200' },
   question_bank: { label: 'Question Bank',   color: 'bg-amber-50 text-amber-700 border-amber-200' },
   test_plan:     { label: 'Internal Test',   color: 'bg-teal-light text-teal border-teal' },
+  exam_paper:    { label: 'Exam Paper',      color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 }
 
 const MODEL_LABELS = {
@@ -75,7 +78,6 @@ export default function DraftDetailPage() {
   const [draft,      setDraft]      = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState(null)
-  const [copied,     setCopied]     = useState(false)
   const [feedback,   setFeedback]   = useState(null) // { rating, feedback_text }
   const [showDelete, setShowDelete] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
@@ -104,12 +106,6 @@ export default function DraftDetailPage() {
   const hasAnswerKey      = !!answerKey
   const displayContent    = showKey ? (draft?.raw_output ?? '') : questionsOnly
   const isDemoGeneration  = draft?.metadata?.is_demo === true
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(displayContent)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   function handleExportTxt() {
     const topic    = draft.prompt_params?.topic ?? 'draft'
@@ -260,26 +256,27 @@ export default function DraftDetailPage() {
                 </button>
               )}
 
-              <button
-                onClick={handleCopy}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
-                    </svg>
-                    Copy
-                  </>
-                )}
-              </button>
+              {/* Copy — two variants for MCQ/QB */}
+              {hasAnswerKey ? (
+                <>
+                  <CopyButton
+                    content={toPlainText(draft.raw_output ?? '', { includeKey: true })}
+                    label="Copy w/ Answers"
+                    className="py-2"
+                  />
+                  <CopyButton
+                    content={toPlainText(draft.raw_output ?? '', { includeKey: false })}
+                    label="Copy w/o Answers"
+                    className="py-2"
+                  />
+                </>
+              ) : (
+                <CopyButton
+                  content={toPlainText(draft.raw_output ?? '', { includeKey: true })}
+                  label="Copy"
+                  className="py-2"
+                />
+              )}
 
               <button
                 onClick={handleExportTxt}
