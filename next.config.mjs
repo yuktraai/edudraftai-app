@@ -15,7 +15,7 @@ const securityHeaders = [
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https:",
       "connect-src 'self' https://*.supabase.co https://api.openai.com https://api.anthropic.com https://api.razorpay.com",
-      "frame-src https://api.razorpay.com",
+      "frame-src https://api.razorpay.com https://www.youtube.com",
     ].join('; '),
   },
 ]
