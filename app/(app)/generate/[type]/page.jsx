@@ -415,8 +415,8 @@ export default function GenerateTypePage() {
 
       {/* Form */}
       <div className="bg-surface border border-border rounded-xl p-6 space-y-6">
-        {/* My Templates */}
-        {templates.length > 0 && (
+        {/* My Templates — hidden for lesson notes (only 1 param, not worth templating) */}
+        {type !== 'lesson_notes' && templates.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-border -mt-2">
             <span className="text-xs font-medium text-muted shrink-0">My Templates:</span>
             {templates.map(t => (
@@ -503,17 +503,19 @@ export default function GenerateTypePage() {
             />
           )}
 
-          {/* Save as Template */}
-          <button
-            type="button"
-            onClick={() => setShowSaveModal(true)}
-            className="flex items-center gap-1.5 text-xs text-muted hover:text-teal transition-colors mt-1"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-            </svg>
-            Save current settings as template
-          </button>
+          {/* Save as Template — hidden for lesson notes */}
+          {type !== 'lesson_notes' && (
+            <button
+              type="button"
+              onClick={() => setShowSaveModal(true)}
+              className="flex items-center gap-1.5 text-xs text-muted hover:text-teal transition-colors mt-1"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+              </svg>
+              Save current settings as template
+            </button>
+          )}
         </div>
       </div>
 
