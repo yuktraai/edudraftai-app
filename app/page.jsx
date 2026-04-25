@@ -136,16 +136,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Video placeholder — replace src with real video URL when ready */}
             <div className="lp-video-wrap">
-              <div className="lp-video-placeholder">
-                <div className="lp-video-play">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5.14v14l11-7-11-7z"/>
-                  </svg>
-                </div>
-                <p className="lp-video-label">Product demo coming soon</p>
-              </div>
+              <iframe
+                src="https://www.youtube.com/embed/mGsqnxWhvGY?rel=0&modestbranding=1"
+                title="EduDraftAI Product Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
             </div>
           </div>
         </section>
