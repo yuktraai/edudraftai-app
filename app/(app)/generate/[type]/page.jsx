@@ -230,6 +230,12 @@ export default function GenerateTypePage() {
   const [bulkTopicCount, setBulkTopicCount] = useState(0)
   const [isBulking, setIsBulking]           = useState(false)
 
+  const [templates, setTemplates]           = useState([])
+  const [showSaveModal, setShowSaveModal]   = useState(false)
+  const [templateName, setTemplateName]     = useState('')
+  const [savingTemplate, setSavingTemplate] = useState(false)
+  const [templateMsg, setTemplateMsg]       = useState(null)
+
   // Redirect if invalid type
   useEffect(() => {
     if (!meta) router.replace('/generate')
@@ -242,6 +248,15 @@ export default function GenerateTypePage() {
       .then(({ balance }) => setBalance(balance ?? 0))
       .catch(() => setBalance(0))
   }, [output]) // re-fetch after each generation
+
+  // Fetch saved templates for this content type
+  useEffect(() => {
+    if (!type) return
+    fetch(`/api/templates?content_type=${type}`)
+      .then(r => r.json())
+      .then(({ templates }) => setTemplates(templates ?? []))
+      .catch(() => {})
+  }, [type])
 
   async function handleGenerate() {
     if (!topic?.subject_id) return
@@ -334,6 +349,30 @@ export default function GenerateTypePage() {
     }
   }
 
+  async function handleSaveTemplate() {
+    if (!templateName.trim()) return
+    setSavingTemplate(true)
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: templateName.trim(), content_type: type, params }),
+      })
+      const j = await res.json()
+      if (!res.ok) {
+        setTemplateMsg({ type: 'error', text: j.error ?? 'Failed to save template' })
+      } else {
+        setTemplates(prev => [j.template, ...prev])
+        setShowSaveModal(false)
+        setTemplateName('')
+        setTemplateMsg({ type: 'success', text: `Template "${j.template.name}" saved!` })
+        setTimeout(() => setTemplateMsg(null), 3000)
+      }
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
   if (!meta) return null
 
   const canGenerate = topic?.subject_id && !isStreaming && (balance ?? 0) > 0
@@ -367,6 +406,24 @@ export default function GenerateTypePage() {
 
       {/* Form */}
       <div className="bg-surface border border-border rounded-xl p-6 space-y-6">
+        {/* My Templates */}
+        {templates.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-border -mt-2">
+            <span className="text-xs font-medium text-muted shrink-0">My Templates:</span>
+            {templates.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setParams(t.params)}
+                title={`Load template: ${t.name}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-bg border border-border text-text hover:border-teal hover:text-teal transition-colors"
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Step 1: Topic */}
         <div>
           <h2 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
@@ -436,6 +493,18 @@ export default function GenerateTypePage() {
               onComplete={() => setIsBulking(false)}
             />
           )}
+
+          {/* Save as Template */}
+          <button
+            type="button"
+            onClick={() => setShowSaveModal(true)}
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-teal transition-colors mt-1"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+            </svg>
+            Save current settings as template
+          </button>
         </div>
       </div>
 
@@ -455,6 +524,48 @@ export default function GenerateTypePage() {
         isStreaming={isStreaming}
         generationId={generationId}
       />
+
+      {/* Save Template Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 space-y-4">
+            <h3 className="font-semibold text-text">Save as Template</h3>
+            <p className="text-xs text-muted">Name this set of settings so you can load it next time.</p>
+            <input
+              type="text"
+              value={templateName}
+              onChange={e => setTemplateName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+              placeholder="e.g. My MCQ Defaults"
+              maxLength={60}
+              className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowSaveModal(false); setTemplateName('') }}
+                className="flex-1 px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-xl hover:border-text transition-colors"
+              >Cancel</button>
+              <button
+                onClick={handleSaveTemplate}
+                disabled={savingTemplate || !templateName.trim()}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold bg-teal text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {savingTemplate ? 'Saving\u2026' : 'Save Template'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template feedback toast */}
+      {templateMsg && (
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${
+          templateMsg.type === 'success' ? 'bg-teal text-white' : 'bg-error text-white'
+        }`}>
+          {templateMsg.text}
+        </div>
+      )}
     </div>
   )
 }

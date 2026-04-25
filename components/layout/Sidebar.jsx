@@ -23,12 +23,14 @@ const NAV_LINKS = {
     { label: 'Syllabus',     href: '/syllabus' },
     { label: 'Credits',      href: '/admin/credits' },
     { label: 'Buy Credits',  href: '/admin/credits/buy' },
+    { label: 'Profile',      href: '/profile' },
   ],
   lecturer: [
     { label: 'Dashboard',  href: '/dashboard' },
     { label: 'Generate',   href: '/generate' },
     { label: 'My Drafts',  href: '/drafts' },
     { label: 'Syllabus',   href: '/syllabus' },
+    { label: 'Profile',    href: '/profile' },
   ],
 }
 
