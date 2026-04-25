@@ -18,14 +18,7 @@ export default function LandingPage() {
         <div className="lp-wrap lp-header-inner">
           <a className="lp-brand" href="#top" aria-label="EduDraftAI home">
             <span className="lp-brand-badge" aria-hidden="true">
-              <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-                <rect x="5" y="4" width="14" height="18" rx="2.5" fill="rgba(255,255,255,.2)" stroke="rgba(255,255,255,.72)" strokeWidth="1.3"/>
-                <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="rgba(255,255,255,.65)" strokeWidth="1.1" strokeLinecap="round"/>
-                <line x1="8.5" y1="12" x2="15.5" y2="12" stroke="rgba(255,255,255,.65)" strokeWidth="1.1" strokeLinecap="round"/>
-                <line x1="8.5" y1="15" x2="13" y2="15" stroke="rgba(255,255,255,.65)" strokeWidth="1.1" strokeLinecap="round"/>
-                <circle cx="21" cy="8" r="5.5" fill="#00B4A6"/>
-                <path d="M21 5.3L21.7 7.3L23.7 8L21.7 8.7L21 10.7L20.3 8.7L18.3 8L20.3 7.3Z" fill="white"/>
-              </svg>
+              <img src="/logo.png" alt="" width="32" height="32" style={{ borderRadius: '8px' }} />
             </span>
             <span className="lp-brand-text">EduDraft<span>AI</span></span>
           </a>

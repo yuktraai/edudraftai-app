@@ -145,11 +145,14 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
     <aside className="w-64 shrink-0 bg-navy flex flex-col h-full">
       {/* Logo + optional mobile close button */}
       <div className="px-6 py-5 border-b border-navy-2 flex items-center justify-between">
-        <div>
-          <span className="font-heading text-xl font-bold text-white tracking-tight">
-            EduDraftAI
-          </span>
-          <p className="text-xs text-slate-400 mt-0.5">by Yuktra AI</p>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="EduDraftAI" className="w-9 h-9 rounded-xl shrink-0" />
+          <div>
+            <span className="font-heading text-xl font-bold text-white tracking-tight">
+              EduDraftAI
+            </span>
+            <p className="text-xs text-slate-400 mt-0.5">by Yuktra AI</p>
+          </div>
         </div>
         {onClose && (
           <button
