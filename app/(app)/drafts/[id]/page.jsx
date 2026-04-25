@@ -82,6 +82,11 @@ export default function DraftDetailPage() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting,   setDeleting]   = useState(false)
   const [showKey,    setShowKey]    = useState(true)  // teacher view: answer key visible by default
+  const [shareUrl,        setShareUrl]        = useState(null)
+  const [shareExpiry,     setShareExpiry]     = useState(null)
+  const [showShareModal,  setShowShareModal]  = useState(false)
+  const [sharingLoading,  setSharingLoading]  = useState(false)
+  const [copyMsg,         setCopyMsg]         = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -93,6 +98,10 @@ export default function DraftDetailPage() {
       else {
         setDraft(draftRes.data)
         setFeedback(feedbackRes.data ?? null)
+        if (draftRes.data.share_token && new Date(draftRes.data.share_expires_at) > new Date()) {
+          setShareUrl(`${window.location.origin}/shared/${draftRes.data.share_token}`)
+          setShareExpiry(draftRes.data.share_expires_at)
+        }
       }
     }).catch(() => setError('Network error. Please try again.'))
       .finally(() => setLoading(false))
@@ -142,6 +151,26 @@ export default function DraftDetailPage() {
       alert('Network error. Please try again.')
       setDeleting(false)
     }
+  }
+
+  async function handleShare() {
+    setSharingLoading(true)
+    const res = await fetch(`/api/drafts/${id}/share`, { method: 'POST' })
+    const j = await res.json()
+    setSharingLoading(false)
+    if (!res.ok) return
+    setShareUrl(j.share_url)
+    setShareExpiry(j.expires_at)
+    setShowShareModal(true)
+  }
+
+  async function handleRevoke() {
+    setSharingLoading(true)
+    await fetch(`/api/drafts/${id}/share`, { method: 'DELETE' })
+    setSharingLoading(false)
+    setShareUrl(null)
+    setShareExpiry(null)
+    setShowShareModal(false)
   }
 
   if (loading) {
@@ -346,6 +375,20 @@ export default function DraftDetailPage() {
                 Print
               </button>
             )}
+
+            <span className="w-px h-5 bg-border" />
+
+            {/* 6 — Share */}
+            <button
+              onClick={() => shareUrl ? setShowShareModal(true) : handleShare()}
+              disabled={sharingLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted hover:text-navy border border-border hover:border-navy/30 rounded-lg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+              </svg>
+              {shareUrl ? 'Shared ✓' : sharingLoading ? '…' : 'Share'}
+            </button>
           </div>
 
           {/* Meta row */}
@@ -473,6 +516,50 @@ export default function DraftDetailPage() {
             onCancel={() => setShowDelete(false)}
             deleting={deleting}
           />
+        )}
+
+        {/* Share modal */}
+        {showShareModal && shareUrl && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-text">Share Draft</h3>
+                <button onClick={() => setShowShareModal(false)} className="text-muted hover:text-text">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-xs text-muted">Anyone with this link can view this draft — no login required.</p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 px-3 py-2 text-xs bg-bg border border-border rounded-lg text-text truncate"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl)
+                    setCopyMsg(true)
+                    setTimeout(() => setCopyMsg(false), 2000)
+                  }}
+                  className="px-3 py-2 bg-teal text-white text-xs font-semibold rounded-lg hover:bg-teal-2 transition-colors shrink-0"
+                >
+                  {copyMsg ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+              <p className="text-xs text-muted">
+                Expires: {shareExpiry ? new Date(shareExpiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '7 days from now'}
+              </p>
+              <button
+                onClick={handleRevoke}
+                disabled={sharingLoading}
+                className="text-xs text-error hover:underline disabled:opacity-50"
+              >
+                {sharingLoading ? 'Revoking…' : 'Revoke link'}
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </>

@@ -31,6 +31,8 @@ export async function GET(request, { params }) {
         created_at,
         user_id,
         subject_id,
+        share_token,
+        share_expires_at,
         subjects ( name, code, semester ),
         users ( name )
       `)
