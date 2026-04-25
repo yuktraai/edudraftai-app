@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { TopicPicker } from '@/components/syllabus/TopicPicker'
 import { OutputViewer } from '@/components/generation/OutputViewer'
 import { Button } from '@/components/ui/Button'
+import { BulkProgressBar } from '@/components/generation/BulkProgressBar'
 
 const TYPE_META = {
   lesson_notes: {
@@ -224,6 +226,10 @@ export default function GenerateTypePage() {
   const [balance, setBalance]       = useState(null)
   const [generationId, setGenerationId] = useState(null)
 
+  const [bulkParentId, setBulkParentId]     = useState(null)
+  const [bulkTopicCount, setBulkTopicCount] = useState(0)
+  const [isBulking, setIsBulking]           = useState(false)
+
   // Redirect if invalid type
   useEffect(() => {
     if (!meta) router.replace('/generate')
@@ -299,6 +305,32 @@ export default function GenerateTypePage() {
       setError(`Network error: ${err.message}`)
     } finally {
       setIsStreaming(false)
+    }
+  }
+
+  async function handleBulkGenerate() {
+    if (!topic?.subject_id || !topic?.unit_number) return
+    setError(null)
+    setBulkParentId(null)
+    setIsBulking(true)
+    try {
+      const res = await fetch('/api/generate/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unit_number: topic.unit_number,
+          subject_id:  topic.subject_id,
+          content_type: type,
+          params,
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) { setError(j.error ?? 'Bulk generation failed'); setIsBulking(false); return }
+      setBulkParentId(j.parent_id)
+      setBulkTopicCount(j.topic_count)
+    } catch (err) {
+      setError(err.message)
+      setIsBulking(false)
     }
   }
 
@@ -381,6 +413,28 @@ export default function GenerateTypePage() {
           )}
           {!topic?.subject_id && balance > 0 && (
             <p className="text-xs text-muted mt-2">Select a topic above to enable generation.</p>
+          )}
+
+          {/* Bulk generation */}
+          {topic?.unit_number && !bulkParentId && (
+            <button
+              type="button"
+              onClick={handleBulkGenerate}
+              disabled={isBulking || (balance ?? 0) === 0}
+              className="flex items-center gap-2 text-sm font-medium text-navy border border-navy/20 rounded-xl px-4 py-2.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 mt-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+              </svg>
+              {isBulking ? 'Starting bulk generation\u2026' : 'Generate for Entire Unit (uses multiple credits)'}
+            </button>
+          )}
+          {bulkParentId && (
+            <BulkProgressBar
+              parentId={bulkParentId}
+              topicCount={bulkTopicCount}
+              onComplete={() => setIsBulking(false)}
+            />
           )}
         </div>
       </div>

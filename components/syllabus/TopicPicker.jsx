@@ -99,6 +99,7 @@ export function TopicPicker({ onChange }) {
       subtopics:    selectedArr.length > 0 ? selectedArr : (chunk.subtopics ?? []),
       subject_name: subject.name,
       semester:     Number(semester),
+      unit_number:  chunk.unit_number ?? null,
     })
   }
 
