@@ -7,6 +7,7 @@ import { buildMcqBankPrompt } from '@/lib/ai/prompts/mcq-bank'
 import { buildQuestionBankPrompt } from '@/lib/ai/prompts/question-bank'
 import { buildTestPlanPrompt } from '@/lib/ai/prompts/test-plan'
 import { buildExamPaperPrompt } from '@/lib/ai/prompts/exam-paper'
+import { buildRegenerationPrompt } from '@/lib/ai/prompts/regenerate'
 import { embedText } from '@/lib/rag/embedder'
 import { queryContext } from '@/lib/rag/pinecone'
 import OpenAI from 'openai'
@@ -43,10 +44,12 @@ function checkRateLimit(userId) {
 }
 
 const bodySchema = z.object({
-  content_type: z.enum(['lesson_notes', 'mcq_bank', 'question_bank', 'test_plan', 'exam_paper']),
-  subject_id:   z.string().uuid(),
-  chunk_id:     z.string().uuid().nullable().optional(),
-  params:       z.record(z.unknown()),
+  content_type:             z.enum(['lesson_notes', 'mcq_bank', 'question_bank', 'test_plan', 'exam_paper']),
+  subject_id:               z.string().uuid(),
+  chunk_id:                 z.string().uuid().nullable().optional(),
+  params:                   z.record(z.unknown()),
+  parent_generation_id:     z.string().uuid().optional(),
+  regeneration_instruction: z.string().min(1).max(1000).optional(),
 })
 
 function buildPrompt(content_type, params) {
@@ -95,7 +98,19 @@ export async function POST(request) {
   if (!parsed.success)
     return Response.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { content_type, subject_id, chunk_id, params } = parsed.data
+  const { content_type, subject_id, chunk_id, params, parent_generation_id, regeneration_instruction } = parsed.data
+
+  // ── 3b. Fetch parent generation for regeneration flow ────────────────────
+  let parentGeneration = null
+  if (parent_generation_id && regeneration_instruction) {
+    const { data: pg } = await adminSupabase
+      .from('content_generations')
+      .select('id, raw_output, prompt_params, content_type')
+      .eq('id', parent_generation_id)
+      .eq('user_id', user.id)
+      .single()
+    parentGeneration = pg
+  }
 
   // ── 4. Verify subject belongs to user's college ───────────────────────────
   const { data: subject } = await adminSupabase
@@ -181,7 +196,14 @@ export async function POST(request) {
   // from Pinecone. Inject into the last user message as reference material.
   // Any Pinecone failure is caught and skipped — generation must never fail due to RAG.
   let ragChunksUsed = 0
-  let messagesWithRag = buildPrompt(content_type, promptParams)
+  let messagesWithRag = parentGeneration && regeneration_instruction
+    ? buildRegenerationPrompt({
+        content_type,
+        prompt_params: parentGeneration.prompt_params,
+        raw_output:    parentGeneration.raw_output,
+        instruction:   regeneration_instruction,
+      })
+    : buildPrompt(content_type, promptParams)
 
   if (subject.rag_enabled) {
     try {
@@ -238,14 +260,19 @@ export async function POST(request) {
   const { data: generation, error: genInsertErr } = await adminSupabase
     .from('content_generations')
     .insert({
-      user_id:           user.id,
-      college_id:        profile.college_id,
+      user_id:              user.id,
+      college_id:           profile.college_id,
       subject_id,
-      syllabus_chunk_id: chunk_id ?? null,
+      syllabus_chunk_id:    chunk_id ?? null,
       content_type,
-      prompt_params:     { ...promptParams, is_regeneration: isRegeneration },
-      status:            'generating',
-      metadata:          { rag_chunks_used: ragChunksUsed, is_demo: isDemo },
+      prompt_params:        { ...promptParams, is_regeneration: isRegeneration },
+      status:               'generating',
+      parent_generation_id: parent_generation_id ?? null,
+      metadata:             {
+        rag_chunks_used: ragChunksUsed,
+        is_demo: isDemo,
+        ...(regeneration_instruction ? { is_regeneration: true, regeneration_instruction } : {}),
+      },
     })
     .select('id')
     .single()

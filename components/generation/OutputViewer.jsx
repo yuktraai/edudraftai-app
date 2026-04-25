@@ -7,8 +7,10 @@ import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { toPlainText } from '@/lib/export/plainText'
 
-export function OutputViewer({ content, isStreaming, generationId, contentType, isDemo = false }) {
+export function OutputViewer({ content, isStreaming, generationId, contentType, isDemo = false, onRegenerate }) {
   const [showKey, setShowKey] = useState(true) // default: teacher view (with answers)
+  const [regenOpen, setRegenOpen] = useState(false)
+  const [regenInstruction, setRegenInstruction] = useState('')
 
   // Parse answer key once streaming is done
   const { content: questions, answerKey } = useMemo(
@@ -93,10 +95,50 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
                   View Draft
                 </a>
               )}
+              {!isStreaming && content && onRegenerate && (
+                <button
+                  onClick={() => setRegenOpen(r => !r)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                    regenOpen
+                      ? 'bg-navy text-white border-navy'
+                      : 'text-muted border-border hover:border-navy hover:text-navy'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Refine
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {/* Refine panel */}
+      {regenOpen && (
+        <div className="px-5 py-4 border-b border-border bg-bg flex gap-3 items-start">
+          <textarea
+            value={regenInstruction}
+            onChange={e => setRegenInstruction(e.target.value)}
+            placeholder='What should change? e.g. "Make questions harder" or "Add 2 more questions on subtopic X"'
+            rows={2}
+            className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder-muted resize-none focus:ring-2 focus:ring-teal focus:outline-none"
+          />
+          <button
+            onClick={() => {
+              if (!regenInstruction.trim()) return
+              onRegenerate(regenInstruction.trim())
+              setRegenOpen(false)
+              setRegenInstruction('')
+            }}
+            disabled={!regenInstruction.trim()}
+            className="px-4 py-2 text-sm font-semibold bg-teal text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
+          >
+            Apply (1 credit)
+          </button>
+        </div>
+      )}
 
       {/* Content area */}
       <div className="p-5 max-h-[60vh] overflow-y-auto">

@@ -87,6 +87,10 @@ export default function DraftDetailPage() {
   const [showShareModal,  setShowShareModal]  = useState(false)
   const [sharingLoading,  setSharingLoading]  = useState(false)
   const [copyMsg,         setCopyMsg]         = useState(false)
+  const [regenOpen,          setRegenOpen]          = useState(false)
+  const [regenInstruction,   setRegenInstruction]   = useState('')
+  const [isRegenerating,     setIsRegenerating]     = useState(false)
+  const [regenError,         setRegenError]         = useState(null)
 
   useEffect(() => {
     if (!id) return
@@ -115,6 +119,40 @@ export default function DraftDetailPage() {
   const hasAnswerKey      = !!answerKey
   const displayContent    = showKey ? (draft?.raw_output ?? '') : questionsOnly
   const isDemoGeneration  = draft?.metadata?.is_demo === true
+
+  async function handleRegenerate() {
+    if (!regenInstruction.trim() || !draft) return
+    setIsRegenerating(true)
+    setRegenError(null)
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content_type:             draft.content_type,
+          subject_id:               draft.subject_id,
+          chunk_id:                 draft.syllabus_chunk_id ?? null,
+          params:                   draft.prompt_params ?? {},
+          parent_generation_id:     draft.id,
+          regeneration_instruction: regenInstruction.trim(),
+        }),
+      })
+      if (!res.ok) {
+        const j = await res.json()
+        setRegenError(j.error ?? 'Failed to regenerate')
+        return
+      }
+      const newId = res.headers.get('X-Generation-Id')
+      // Drain the stream (we don't show it here — navigate to the new draft)
+      const reader = res.body.getReader()
+      while (true) { const { done } = await reader.read(); if (done) break }
+      if (newId) router.push(`/drafts/${newId}`)
+    } catch (err) {
+      setRegenError(err.message)
+    } finally {
+      setIsRegenerating(false)
+    }
+  }
 
   function handleExportTxt() {
     const topic    = draft.prompt_params?.topic ?? 'draft'
@@ -389,7 +427,46 @@ export default function DraftDetailPage() {
               </svg>
               {shareUrl ? 'Shared ✓' : sharingLoading ? '…' : 'Share'}
             </button>
+
+            <span className="w-px h-5 bg-border" />
+
+            {/* 7 — Refine */}
+            <button
+              onClick={() => setRegenOpen(r => !r)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
+                regenOpen ? 'bg-navy text-white border-navy' : 'text-muted border-border hover:border-navy hover:text-navy'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+              Refine
+            </button>
           </div>
+
+          {/* Refine panel */}
+          {regenOpen && (
+            <div className="bg-bg border-b border-border px-6 py-4 flex gap-3 items-start">
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-medium text-muted">What should change in this draft?</label>
+                <textarea
+                  value={regenInstruction}
+                  onChange={e => setRegenInstruction(e.target.value)}
+                  placeholder='e.g. "Make questions harder" · "Reduce to 5 MCQs" · "Focus only on subtopic X"'
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder-muted resize-none focus:ring-2 focus:ring-teal focus:outline-none"
+                />
+                {regenError && <p className="text-xs text-error">{regenError}</p>}
+              </div>
+              <button
+                onClick={handleRegenerate}
+                disabled={isRegenerating || !regenInstruction.trim()}
+                className="px-4 py-2 text-sm font-semibold bg-teal text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0 mt-5"
+              >
+                {isRegenerating ? 'Generating…' : 'Apply (1 credit)'}
+              </button>
+            </div>
+          )}
 
           {/* Meta row */}
           <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-xs text-muted">

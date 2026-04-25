@@ -226,6 +226,8 @@ export default function GenerateTypePage() {
   const [balance, setBalance]       = useState(null)
   const [generationId, setGenerationId] = useState(null)
 
+  const [regenParentId, setRegenParentId]   = useState(null)
+
   const [bulkParentId, setBulkParentId]     = useState(null)
   const [bulkTopicCount, setBulkTopicCount] = useState(0)
   const [isBulking, setIsBulking]           = useState(false)
@@ -258,7 +260,7 @@ export default function GenerateTypePage() {
       .catch(() => {})
   }, [type])
 
-  async function handleGenerate() {
+  async function handleGenerate({ regenerationInstruction, parentGenerationId } = {}) {
     if (!topic?.subject_id) return
     setError(null)
     setOutput('')
@@ -278,6 +280,7 @@ export default function GenerateTypePage() {
         // test_plan needs topics_covered array
         ...(type === 'test_plan' ? { topics_covered: topic.subtopics ?? [topic.topic] } : {}),
       },
+      ...(parentGenerationId ? { parent_generation_id: parentGenerationId, regeneration_instruction: regenerationInstruction } : {}),
     }
 
     try {
@@ -321,6 +324,12 @@ export default function GenerateTypePage() {
     } finally {
       setIsStreaming(false)
     }
+  }
+
+  async function handleRegenerate(instruction) {
+    if (!generationId) return
+    setRegenParentId(generationId)
+    await handleGenerate({ regenerationInstruction: instruction, parentGenerationId: generationId })
   }
 
   async function handleBulkGenerate() {
@@ -523,6 +532,7 @@ export default function GenerateTypePage() {
         content={output}
         isStreaming={isStreaming}
         generationId={generationId}
+        onRegenerate={handleRegenerate}
       />
 
       {/* Save Template Modal */}
