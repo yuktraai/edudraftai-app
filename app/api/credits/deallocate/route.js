@@ -63,7 +63,7 @@ export async function POST(request) {
         college_id:  profile.college_id,
         amount:      -reclaim,
         reason:      'admin_grant',
-        granted_by:  user.id,
+        created_by:  user.id,
       })
 
     if (ledgerErr) throw ledgerErr

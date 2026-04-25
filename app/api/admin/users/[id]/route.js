@@ -46,6 +46,53 @@ export async function PATCH(request, { params }) {
 
     if (error) throw error
 
+    // ── Auto-reclaim credits when deactivating a user ─────────────────────────
+    // If we're setting is_active = false, reclaim any remaining credits to the pool
+    if (parsed.data.is_active === false) {
+      try {
+        const { data: balance } = await adminSupabase
+          .rpc('get_credit_balance', { p_user_id: params.id })
+
+        const remaining = balance ?? 0
+
+        if (remaining > 0) {
+          const collegeId = targetUser.college_id
+
+          // Deduct from user ledger
+          const { error: ledgerErr } = await adminSupabase
+            .from('credit_ledger')
+            .insert({
+              user_id:    params.id,
+              college_id: collegeId,
+              amount:     -remaining,
+              reason:     'admin_grant',
+              created_by: user.id,
+            })
+
+          if (ledgerErr) {
+            logger.error('[PATCH /api/admin/users/[id]] Credit reclaim ledger error', ledgerErr.message)
+          } else {
+            // Restore to college pool
+            await adminSupabase
+              .from('college_credit_pool')
+              .insert({
+                college_id: collegeId,
+                amount:     remaining,
+                reason:     'refund',
+                created_by: user.id,
+              })
+
+            logger.info('[PATCH /api/admin/users/[id]] Auto-reclaimed credits on deactivation', {
+              user_id: params.id, amount: remaining,
+            })
+          }
+        }
+      } catch (reclaimErr) {
+        // Non-fatal — user is deactivated, credits reclaim is best-effort
+        logger.error('[PATCH /api/admin/users/[id]] Credit reclaim failed', reclaimErr.message)
+      }
+    }
+
     return Response.json({ data: { ok: true } })
   } catch (error) {
     logger.error('[PATCH /api/admin/users/[id]]', error)
