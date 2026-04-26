@@ -5,6 +5,8 @@ import { CountdownTimer } from '@/components/webinar/CountdownTimer'
 import { RegistrationForm } from '@/components/webinar/RegistrationForm'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata({ params }) {
   const { data } = await adminSupabase
     .from('webinars')

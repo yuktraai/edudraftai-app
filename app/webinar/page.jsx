@@ -2,6 +2,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { WebinarCard } from '@/components/webinar/WebinarCard'
 import Link from 'next/link'
 
+export const dynamic  = 'force-dynamic'
 export const metadata = { title: 'Webinars — EduDraftAI' }
 
 export default async function WebinarListPage() {
