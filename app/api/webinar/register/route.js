@@ -114,18 +114,28 @@ export async function POST(request) {
     }
 
     // Send confirmation email (non-fatal)
+    let emailError = null
     try {
-      await resend.emails.send({
+      const emailRes = await resend.emails.send({
         from: `EduDraftAI <${process.env.RESEND_FROM_EMAIL}>`,
         to: email,
         subject: `You're registered — ${webinar.title}, ${formatDate(webinar.date)} at ${webinar.time_ist} IST`,
         html: buildConfirmationEmail({ name, webinar, feedbackToken: reg.feedback_token }),
       })
+      if (emailRes.error) {
+        emailError = emailRes.error.message ?? JSON.stringify(emailRes.error)
+        logger.error('[webinar/register] Resend returned error', emailError)
+      }
     } catch (emailErr) {
+      emailError = emailErr.message
       logger.error('[webinar/register] Email send failed', emailErr.message)
     }
 
-    return Response.json({ success: true, message: 'Registered successfully' })
+    return Response.json({
+      success: true,
+      message: 'Registered successfully',
+      ...(emailError ? { email_warning: emailError } : {}),
+    })
   } catch (err) {
     logger.error('[POST /api/webinar/register]', err)
     return Response.json({ error: 'Registration failed. Please try again.', code: err.message }, { status: 500 })
