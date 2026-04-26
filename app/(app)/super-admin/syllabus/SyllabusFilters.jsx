@@ -1,31 +1,36 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { SubjectMultiSelect } from '@/components/admin/SubjectMultiSelect'
 
 const selectCls =
-  'px-3 py-2 rounded-lg border border-border bg-surface text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent'
-const inputCls =
   'px-3 py-2 rounded-lg border border-border bg-surface text-sm text-text focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent'
 
 export function SyllabusFilters({
   colleges,
   departments,
+  subjects,
   activeCollegeId,
   activeDeptId,
   activeSemester,
-  activeQ,
+  activeSubjectIds,
   total,
   filtered,
 }) {
-  const router = useRouter()
+  const router      = useRouter()
   const searchParams = useSearchParams()
 
-  const hasFilters = !!(activeCollegeId || activeDeptId || activeSemester || activeQ)
+  const hasFilters = !!(
+    activeCollegeId ||
+    activeDeptId ||
+    activeSemester ||
+    activeSubjectIds.length > 0
+  )
 
   function buildParams(overrides) {
     const params = new URLSearchParams(searchParams.toString())
     for (const [key, value] of Object.entries(overrides)) {
-      if (value) {
+      if (value !== undefined && value !== null && value !== '') {
         params.set(key, value)
       } else {
         params.delete(key)
@@ -35,23 +40,52 @@ export function SyllabusFilters({
   }
 
   function handleCollegeChange(e) {
-    const qs = buildParams({ college_id: e.target.value, dept_id: '' })
+    // Changing college resets dept and subject filter
+    const qs = buildParams({
+      college_id:  e.target.value,
+      dept_id:     '',
+      subject_ids: '',
+    })
     router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
   }
 
   function handleDeptChange(e) {
-    const qs = buildParams({ dept_id: e.target.value })
+    // Changing dept resets subject filter
+    const qs = buildParams({
+      dept_id:     e.target.value,
+      subject_ids: '',
+    })
     router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
   }
 
-  function handleQChange(e) {
-    const qs = buildParams({ q: e.target.value })
+  function handleSemesterChange(e) {
+    // Changing semester resets subject filter
+    const qs = buildParams({
+      semester:    e.target.value,
+      subject_ids: '',
+    })
+    router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
+  }
+
+  function handleSubjectChange(newIds) {
+    const qs = buildParams({
+      subject_ids: newIds.length > 0 ? newIds.join(',') : '',
+    })
     router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
   }
 
   function handleClear() {
     router.push('/super-admin/syllabus')
   }
+
+  // Filter subjects available to SubjectMultiSelect by the currently active
+  // college / department / semester so the list stays relevant
+  const visibleSubjects = (subjects ?? []).filter((s) => {
+    if (activeCollegeId && s.college_id !== activeCollegeId) return false
+    if (activeDeptId    && s.department_id !== activeDeptId) return false
+    if (activeSemester  && String(s.semester) !== String(activeSemester)) return false
+    return true
+  })
 
   return (
     <div className="mb-6 space-y-3">
@@ -88,27 +122,24 @@ export function SyllabusFilters({
         <select
           className={selectCls}
           value={activeSemester ?? ''}
-          onChange={e => {
-            const qs = buildParams({ semester: e.target.value })
-            router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
-          }}
+          onChange={handleSemesterChange}
         >
           <option value="">All Semesters</option>
-          {[1,2,3,4,5,6].map(s => (
-            <option key={s} value={s}>Semester {s}</option>
+          {[1, 2, 3, 4, 5, 6].map((s) => (
+            <option key={s} value={s}>
+              Semester {s}
+            </option>
           ))}
         </select>
 
-        {/* Subject search */}
-        <input
-          type="text"
-          className={inputCls}
-          placeholder="Search subjects…"
-          value={activeQ ?? ''}
-          onChange={handleQChange}
+        {/* Subject multi-select */}
+        <SubjectMultiSelect
+          subjects={visibleSubjects}
+          selectedIds={activeSubjectIds}
+          onChange={handleSubjectChange}
         />
 
-        {/* Clear filters button */}
+        {/* Clear filters */}
         {hasFilters && (
           <button
             onClick={handleClear}
