@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
+import { createNotification } from '@/lib/notifications/create'
 
 // POST /api/credits/allocate
 // Body: { target_user_id, amount }
@@ -50,6 +51,22 @@ export async function POST(request) {
       if (error.message?.includes('insufficient_pool_credits'))
         return Response.json({ error: 'Not enough credits in your college pool' }, { status: 402 })
       throw error
+    }
+
+    // Notify lecturer of credit allocation
+    try {
+      const { data: targetProfile } = await adminSupabase
+        .from('users').select('name, preferences').eq('id', target_user_id).single()
+      await createNotification({
+        userId:    target_user_id,
+        collegeId: profile.college_id,
+        type:      'credit_allocated',
+        title:     `${amount} credits added`,
+        message:   `${amount} credit${amount !== 1 ? 's' : ''} have been added to your account by your college admin.`,
+        actionUrl: '/dashboard',
+      })
+    } catch (notifErr) {
+      logger.error('[credits/allocate] Notification failed', notifErr.message)
     }
 
     return Response.json({ success: true, ledger_id: data })

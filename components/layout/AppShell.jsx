@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Sidebar }         from './Sidebar'
-import { CreditWarning }   from '@/components/ui/CreditWarning'
-import { OnboardingTour }  from '@/components/onboarding/OnboardingTour'
+import { Sidebar }             from './Sidebar'
+import { CreditWarning }       from '@/components/ui/CreditWarning'
+import { OnboardingTour }      from '@/components/onboarding/OnboardingTour'
+import { NotificationBell }    from './NotificationBell'
 
 /**
  * AppShell — wraps the app layout with a responsive sidebar.
@@ -77,13 +78,21 @@ export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, u
             </svg>
           </button>
           <span className="font-heading text-base font-bold text-white">EduDraftAI</span>
-          {creditBalance !== null && (
-            <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${
-              creditBalance > 0 ? 'bg-teal text-white' : 'bg-error text-white'
-            }`}>
-              {creditBalance} credits
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
+            {creditBalance !== null && (
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                creditBalance > 0 ? 'bg-teal text-white' : 'bg-error text-white'
+              }`}>
+                {creditBalance} credits
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop top bar */}
+        <div className="hidden lg:flex items-center justify-end px-6 py-2 border-b border-border bg-surface shrink-0">
+          <NotificationBell />
         </div>
 
         <main className="flex-1 overflow-y-auto">

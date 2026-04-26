@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
+import { createNotification } from '@/lib/notifications/create'
 import { z } from 'zod'
 import { buildLessonNotesPrompt } from '@/lib/ai/prompts/lesson-notes'
 import { buildMcqBankPrompt } from '@/lib/ai/prompts/mcq-bank'
@@ -366,6 +367,21 @@ export async function POST(request) {
         p_generation_id: generationId,
       })
 
+      // Check new balance — notify if low (≤ 5 credits remaining)
+      const { data: newBalance } = await adminSupabase.rpc('get_credit_balance', { p_user_id: user.id })
+      if ((newBalance ?? 0) <= 5) {
+        try {
+          await createNotification({
+            userId:    user.id,
+            collegeId: profile.college_id,
+            type:      'credit_low',
+            title:     'Low credit balance',
+            message:   `You have ${newBalance ?? 0} credit${(newBalance ?? 0) !== 1 ? 's' : ''} remaining. Ask your admin to top up.`,
+            actionUrl: '/profile',
+          })
+        } catch {}
+      }
+
       // Increment demo credits used counter
       if (isDemo) {
         await adminSupabase
@@ -386,6 +402,18 @@ export async function POST(request) {
           updated_at:    new Date().toISOString(),
         })
         .eq('id', generationId)
+
+      // Notify the user that generation failed (non-fatal)
+      try {
+        await createNotification({
+          userId:    user.id,
+          collegeId: profile.college_id,
+          type:      'generation_failed',
+          title:     'Content generation failed',
+          message:   'Your content generation could not be completed. Credits have not been deducted. Please try again.',
+          actionUrl: '/generate',
+        })
+      } catch {}
 
       // Write a user-facing error marker into the stream so the client can detect it
       await writer.write(encoder.encode(`\n\n[GENERATION_ERROR]: ${err.message}`))
