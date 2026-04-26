@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
+import { createAndSendInvoice } from '@/lib/invoices'
 
 // POST /api/payments/verify
 // Body: { razorpay_payment_id, razorpay_order_id, razorpay_signature }
@@ -105,6 +106,26 @@ export async function POST(request) {
         amount_paise: purchase.amount_paise,
       },
     }).catch(() => {})
+
+    // ── 5. Generate and send GST invoice (non-fatal) ──────────────────────────
+    try {
+      const { data: buyerProfile } = await adminSupabase
+        .from('users').select('name, email, colleges(name)').eq('id', user.id).single()
+
+      await createAndSendInvoice({
+        userId:      user.id,
+        collegeId:   purchase.college_id,
+        paymentId:   razorpay_payment_id,
+        credits:     purchase.credits_to_award,
+        amountPaise: purchase.amount_paise,
+        buyerName:   buyerProfile?.name ?? 'College Admin',
+        buyerEmail:  buyerProfile?.email ?? user.email,
+        collegeName: buyerProfile?.colleges?.name ?? '',
+        invoiceType: 'pool_purchase',
+      })
+    } catch (invoiceErr) {
+      logger.error('[verify] invoice generation failed', invoiceErr.message)
+    }
 
     return Response.json({ success: true, credits_added: purchase.credits_to_award })
   } catch (err) {
