@@ -12,7 +12,7 @@ import { NotificationBell }    from './NotificationBell'
  * Desktop: sidebar always visible on the left.
  * Mobile (< lg): sidebar hidden, hamburger toggles a slide-out drawer + backdrop.
  */
-export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, userId, onboardingCompleted, children }) {
+export function AppShell({ role, name, creditBalance, personalCreditBalance, hasZeroBalanceLecturers, userId, onboardingCompleted, children }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -35,6 +35,7 @@ export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, u
           role={role}
           name={name}
           creditBalance={creditBalance}
+          personalCreditBalance={personalCreditBalance}
           hasZeroBalanceLecturers={hasZeroBalanceLecturers}
         />
       </div>
@@ -58,6 +59,7 @@ export function AppShell({ role, name, creditBalance, hasZeroBalanceLecturers, u
           role={role}
           name={name}
           creditBalance={creditBalance}
+          personalCreditBalance={personalCreditBalance}
           hasZeroBalanceLecturers={hasZeroBalanceLecturers}
           onClose={() => setOpen(false)}
         />

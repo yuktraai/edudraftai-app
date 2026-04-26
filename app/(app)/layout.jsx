@@ -24,12 +24,21 @@ export default async function AppLayout({ children }) {
 
   // Fetch credit balance server-side for lecturer + college_admin
   let creditBalance = null
+  let personalCreditBalance = null
   let hasZeroBalanceLecturers = false
 
   if (profile.role === 'lecturer' || profile.role === 'college_admin') {
     const { data: bal } = await adminSupabase
       .rpc('get_credit_balance', { p_user_id: user.id })
     creditBalance = bal ?? 0
+  }
+
+  if (profile.role === 'lecturer') {
+    const { data: personalRows } = await adminSupabase
+      .from('personal_credit_ledger')
+      .select('amount')
+      .eq('user_id', user.id)
+    personalCreditBalance = (personalRows ?? []).reduce((s, r) => s + r.amount, 0)
   }
 
   // For college_admin: check if any lecturer in their college has 0 credits
@@ -63,6 +72,7 @@ export default async function AppLayout({ children }) {
       role={profile.role}
       name={profile.name}
       creditBalance={creditBalance}
+      personalCreditBalance={personalCreditBalance}
       hasZeroBalanceLecturers={hasZeroBalanceLecturers}
       userId={user.id}
       onboardingCompleted={profile.onboarding_completed ?? false}

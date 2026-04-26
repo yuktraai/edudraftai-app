@@ -9,6 +9,7 @@ const NAV_LINKS = {
   super_admin: [
     { label: 'Colleges',         href: '/super-admin/colleges' },
     { label: 'Syllabus Manager', href: '/super-admin/syllabus' },
+    { label: 'Subjects',         href: '/super-admin/subjects' },
     { label: 'Analytics',        href: '/super-admin/analytics' },
     { label: 'Webinars',         href: '/super-admin/webinars' },
     { label: 'Logs',             href: '/super-admin/logs' },
@@ -27,11 +28,12 @@ const NAV_LINKS = {
     { label: 'Profile',      href: '/profile' },
   ],
   lecturer: [
-    { label: 'Dashboard',  href: '/dashboard' },
-    { label: 'Generate',   href: '/generate' },
-    { label: 'My Drafts',  href: '/drafts' },
-    { label: 'Syllabus',   href: '/syllabus' },
-    { label: 'Profile',    href: '/profile' },
+    { label: 'Dashboard',   href: '/dashboard' },
+    { label: 'Generate',    href: '/generate' },
+    { label: 'My Drafts',   href: '/drafts' },
+    { label: 'Syllabus',    href: '/syllabus' },
+    { label: 'Buy Credits', href: '/credits/buy' },
+    { label: 'Profile',     href: '/profile' },
   ],
 }
 
@@ -138,7 +140,7 @@ function NameEditor({ initialName }) {
   )
 }
 
-export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, onClose }) {
+export function Sidebar({ role, name, creditBalance, personalCreditBalance, hasZeroBalanceLecturers, onClose }) {
   const pathname = usePathname()
   const links    = NAV_LINKS[role] ?? NAV_LINKS.lecturer
 
@@ -193,6 +195,14 @@ export function Sidebar({ role, name, creditBalance, hasZeroBalanceLecturers, on
           }`}>
             {creditBalance}
           </span>
+        </div>
+      )}
+
+      {/* Personal credit balance pill — lecturer only, shown when > 0 */}
+      {personalCreditBalance > 0 && (
+        <div className="mx-3 mt-1.5 px-3 py-2 rounded-lg bg-navy-2 flex items-center justify-between">
+          <span className="text-xs text-slate-300">My Credits</span>
+          <span className="text-sm font-bold text-teal">{personalCreditBalance}</span>
         </div>
       )}
 

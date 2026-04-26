@@ -163,11 +163,22 @@ export async function POST(request) {
     }
   }
 
-  // ── 6. Credit balance check ───────────────────────────────────────────────
+  // ── 6. Credit balance check (personal + pool) ────────────────────────────
+  // Check personal credits first — they take priority over pool credits
+  const { data: personalRows } = await adminSupabase
+    .from('personal_credit_ledger')
+    .select('amount')
+    .eq('user_id', user.id)
+
+  const personalBalance = (personalRows ?? []).reduce((s, r) => s + r.amount, 0)
+  const usePersonal = personalBalance > 0
+
   const { data: balance } = await adminSupabase
     .rpc('get_credit_balance', { p_user_id: user.id })
 
-  if ((balance ?? 0) <= 0) {
+  const totalBalance = (balance ?? 0) + personalBalance
+
+  if (totalBalance <= 0) {
     const noCreditsMsg = demoCreditsUsed >= 3
       ? 'Your 3 demo credits have been used. Ask your college admin to allocate credits to continue generating.'
       : 'Insufficient credits. Contact your college admin to allocate credits to your account.'
@@ -361,15 +372,33 @@ export async function POST(request) {
         })
         .eq('id', generationId)
 
-      await adminSupabase.rpc('deduct_credit_and_log', {
-        p_user_id:       user.id,
-        p_college_id:    profile.college_id,
-        p_generation_id: generationId,
-      })
+      if (usePersonal) {
+        // Deduct from personal credit ledger
+        await adminSupabase.from('personal_credit_ledger').insert({
+          user_id:      user.id,
+          college_id:   profile.college_id,
+          amount:       -1,
+          reason:       'content_generation',
+          reference_id: generationId,
+        })
+      } else {
+        // Deduct from college pool via atomic RPC
+        await adminSupabase.rpc('deduct_credit_and_log', {
+          p_user_id:       user.id,
+          p_college_id:    profile.college_id,
+          p_generation_id: generationId,
+        })
+      }
 
-      // Check new balance — notify if low (≤ 5 credits remaining)
-      const { data: newBalance } = await adminSupabase.rpc('get_credit_balance', { p_user_id: user.id })
-      if ((newBalance ?? 0) <= 5) {
+      // Check new balance — notify if low (≤ 5 combined credits remaining)
+      const { data: newPoolBalance } = await adminSupabase.rpc('get_credit_balance', { p_user_id: user.id })
+      const { data: newPersonalRows } = await adminSupabase
+        .from('personal_credit_ledger')
+        .select('amount')
+        .eq('user_id', user.id)
+      const newPersonalBalance = (newPersonalRows ?? []).reduce((s, r) => s + r.amount, 0)
+      const newBalance = (newPoolBalance ?? 0) + newPersonalBalance
+      if (newBalance <= 5) {
         try {
           await createNotification({
             userId:    user.id,
