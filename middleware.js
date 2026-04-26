@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 // Routes accessible only while logged OUT
 const AUTH_ROUTES = ['/login', '/verify']
 
+// Public routes that must never trigger the auth redirect
+const PUBLIC_PREFIXES = ['/webinar']
+
 // Route prefixes that require authentication
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -49,7 +52,8 @@ export async function middleware(request) {
   // Always call getUser() — this refreshes the session token if needed
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
+  const isPublic = PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  const isProtected = !isPublic && PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
   const isAuthRoute = AUTH_ROUTES.includes(pathname)
 
   // ── 1. Unauthenticated user hitting a protected route → /login ──────────────

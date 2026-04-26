@@ -10,6 +10,7 @@ const NAV_LINKS = {
     { label: 'Colleges',         href: '/super-admin/colleges' },
     { label: 'Syllabus Manager', href: '/super-admin/syllabus' },
     { label: 'Analytics',        href: '/super-admin/analytics' },
+    { label: 'Webinars',         href: '/super-admin/webinars' },
     { label: 'Logs',             href: '/super-admin/logs' },
     { label: 'Waitlist',         href: '/super-admin/waitlist' },
   ],
