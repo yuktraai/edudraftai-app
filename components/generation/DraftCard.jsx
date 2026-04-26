@@ -49,12 +49,15 @@ export function DraftCard({ draft, folderName = null }) {
   return (
     <Link href={`/drafts/${draft.id}`} className="block group">
       <div className="bg-surface border border-border rounded-xl p-5 hover:border-teal hover:shadow-sm transition-all duration-150">
-        {/* Top row: type badge + date */}
+        {/* Top row: type badge + date + overflow indicator */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.color}`}>
             {meta.label}
           </span>
-          <span className="text-xs text-muted shrink-0">{formatDate(draft.created_at)}</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs text-muted">{formatDate(draft.created_at)}</span>
+            <span className="text-xs text-muted/50 tracking-widest select-none">···</span>
+          </div>
         </div>
 
         {/* Subject */}

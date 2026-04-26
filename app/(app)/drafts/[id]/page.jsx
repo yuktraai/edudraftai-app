@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { MathContent } from '@/components/ui/MathContent'
 import { FeedbackBar } from '@/components/generation/FeedbackBar'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
-import { CopyButton } from '@/components/ui/CopyButton'
 import { toPlainText } from '@/lib/export/plainText'
 
 const TYPE_META = {
@@ -91,6 +90,8 @@ export default function DraftDetailPage() {
   const [regenInstruction,   setRegenInstruction]   = useState('')
   const [isRegenerating,     setIsRegenerating]     = useState(false)
   const [regenError,         setRegenError]         = useState(null)
+  const [overflowOpen,       setOverflowOpen]       = useState(false)
+  const overflowRef = useRef(null)
 
   useEffect(() => {
     if (!id) return
@@ -110,6 +111,18 @@ export default function DraftDetailPage() {
     }).catch(() => setError('Network error. Please try again.'))
       .finally(() => setLoading(false))
   }, [id])
+
+  // Close overflow menu on click outside
+  useEffect(() => {
+    if (!overflowOpen) return
+    function handleClickOutside(e) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target)) {
+        setOverflowOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [overflowOpen])
 
   // Parse answer key — memoised so it only re-runs when raw_output changes
   const { content: questionsOnly, answerKey } = useMemo(
@@ -169,8 +182,32 @@ export default function DraftDetailPage() {
     URL.revokeObjectURL(url)
   }
 
-  function handlePrint(withKey = true) {
-    const keyParam = hasAnswerKey ? `&key=${withKey ? '1' : '0'}` : ''
+  async function handleCopy() {
+    const text = toPlainText(draft.raw_output ?? '', { includeKey: showKey })
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyMsg(true)
+      setTimeout(() => setCopyMsg(false), 2000)
+    } catch {
+      // fallback: select a temporary textarea
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      setCopyMsg(true)
+      setTimeout(() => setCopyMsg(false), 2000)
+    }
+  }
+
+  function handleDownloadWord() {
+    const keyParam = hasAnswerKey ? `&key=${showKey ? '1' : '0'}` : ''
+    window.location.href = `/api/drafts/${id}/export?format=docx${keyParam}`
+  }
+
+  function handlePrint() {
+    const keyParam = hasAnswerKey ? `&key=${showKey ? '1' : '0'}` : ''
     window.open(`/print/${id}?autoprint=1${keyParam}`, '_blank')
   }
 
@@ -301,172 +338,171 @@ export default function DraftDetailPage() {
               </h1>
             </div>
 
-            {/* Delete — isolated top-right */}
-            <button
-              onClick={() => setShowDelete(true)}
-              className="no-print shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-error border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-              </svg>
-              Delete
-            </button>
           </div>
 
-          {/* ── Action toolbar ─────────────────────────────────────────────── */}
-          <div className="no-print flex flex-wrap items-center gap-2 pt-4 border-t border-border">
+          {/* ── Action area ────────────────────────────────────────────────── */}
+          <div className="no-print pt-4 border-t border-border space-y-3">
 
-            {/* 1 — Answer key toggle */}
+            {/* Answer Key toggle */}
             {hasAnswerKey && (
+              <div className="flex items-center gap-3 py-3 px-4 bg-bg rounded-xl border border-border">
+                <span className="text-sm font-medium text-text flex-1">Answer Key</span>
+                <button
+                  onClick={() => setShowKey(k => !k)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showKey ? 'bg-teal' : 'bg-border'}`}
+                  aria-label={showKey ? 'Turn off answer key' : 'Turn on answer key'}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${showKey ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+                <span className={`text-sm font-semibold w-8 ${showKey ? 'text-teal' : 'text-muted'}`}>{showKey ? 'ON' : 'OFF'}</span>
+              </div>
+            )}
+
+            {/* 3 primary action buttons + overflow menu */}
+            <div className="flex gap-2 items-center">
+              {/* Download Word */}
               <button
-                onClick={() => setShowKey(p => !p)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
-                  showKey
-                    ? 'bg-teal text-white border-teal hover:bg-teal-2'
-                    : 'text-muted border-border hover:border-teal hover:text-teal'
-                }`}
+                onClick={handleDownloadWord}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold bg-navy text-white rounded-xl hover:bg-navy-2 transition-colors"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  {showKey
-                    ? <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    : <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                  }
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
-                {showKey ? 'Key: ON' : 'Key: OFF'}
+                Download Word
               </button>
-            )}
 
-            {/* Divider after toggle */}
-            {hasAnswerKey && <span className="w-px h-5 bg-border" />}
+              {/* Copy */}
+              <button
+                onClick={handleCopy}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold border border-border text-text rounded-xl hover:border-teal hover:text-teal transition-colors"
+              >
+                {copyMsg ? (
+                  <>
+                    <svg className="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </button>
 
-            {/* 2 — Copy */}
-            {hasAnswerKey ? (
-              <>
-                <CopyButton content={toPlainText(draft.raw_output ?? '', { includeKey: true })}  label="Copy w/ Key" className="py-1.5" />
-                <CopyButton content={toPlainText(draft.raw_output ?? '', { includeKey: false })} label="Copy w/o Key" className="py-1.5" />
-              </>
-            ) : (
-              <CopyButton content={toPlainText(draft.raw_output ?? '', { includeKey: true })} label="Copy" className="py-1.5" />
-            )}
-
-            {/* 3 — Export TXT */}
-            <button
-              onClick={handleExportTxt}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-              TXT
-            </button>
-
-            <span className="w-px h-5 bg-border" />
-
-            {/* 4 — Word */}
-            {hasAnswerKey ? (
-              <>
-                <a href={`/api/drafts/${id}/export?format=docx&key=1`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-navy hover:text-navy transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
-                  Word w/ Key
-                </a>
-                <a href={`/api/drafts/${id}/export?format=docx&key=0`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-navy hover:text-navy transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
-                  Word w/o Key
-                </a>
-              </>
-            ) : (
-              <a href={`/api/drafts/${id}/export?format=docx`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-navy hover:text-navy transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                Word
-              </a>
-            )}
-
-            <span className="w-px h-5 bg-border" />
-
-            {/* 5 — Print */}
-            {hasAnswerKey ? (
-              <>
-                <button onClick={() => handlePrint(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                  </svg>
-                  Print w/ Key
-                </button>
-                <button onClick={() => handlePrint(false)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
-                  </svg>
-                  Print w/o Key
-                </button>
-              </>
-            ) : (
-              <button onClick={() => handlePrint()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:border-teal hover:text-teal transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {/* Print */}
+              <button
+                onClick={handlePrint}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold border border-border text-text rounded-xl hover:border-teal hover:text-teal transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
                 </svg>
                 Print
               </button>
-            )}
 
-            <span className="w-px h-5 bg-border" />
+              {/* Overflow ··· menu */}
+              <div className="relative" ref={overflowRef}>
+                <button
+                  onClick={() => setOverflowOpen(o => !o)}
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl border transition-colors ${
+                    overflowOpen ? 'border-navy text-navy bg-bg' : 'border-border text-muted hover:border-text hover:text-text'
+                  }`}
+                  aria-label="More actions"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <circle cx="5" cy="12" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="19" cy="12" r="1.5" />
+                  </svg>
+                </button>
+                {overflowOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 bg-surface border border-border rounded-xl shadow-lg z-20 py-1 overflow-hidden">
+                    {/* Download TXT */}
+                    <button
+                      onClick={() => { handleExportTxt(); setOverflowOpen(false) }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-bg transition-colors text-left"
+                    >
+                      <svg className="w-4 h-4 text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Download as TXT
+                    </button>
 
-            {/* 6 — Share */}
-            <button
-              onClick={() => shareUrl ? setShowShareModal(true) : handleShare()}
-              disabled={sharingLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted hover:text-navy border border-border hover:border-navy/30 rounded-lg transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-              </svg>
-              {shareUrl ? 'Shared ✓' : sharingLoading ? '…' : 'Share'}
-            </button>
+                    {/* Share */}
+                    <button
+                      onClick={() => { shareUrl ? setShowShareModal(true) : handleShare(); setOverflowOpen(false) }}
+                      disabled={sharingLoading}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-bg transition-colors text-left disabled:opacity-50"
+                    >
+                      <svg className="w-4 h-4 text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                      </svg>
+                      {shareUrl ? 'Share link (active)' : sharingLoading ? 'Creating link…' : 'Share link'}
+                    </button>
 
-            <span className="w-px h-5 bg-border" />
+                    <div className="h-px bg-border mx-2 my-1" />
 
-            {/* 7 — Refine */}
-            <button
-              onClick={() => setRegenOpen(r => !r)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${
-                regenOpen ? 'bg-navy text-white border-navy' : 'text-muted border-border hover:border-navy hover:text-navy'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
-              Refine
-            </button>
-          </div>
-
-          {/* Refine panel */}
-          {regenOpen && (
-            <div className="bg-bg border-b border-border px-6 py-4 flex gap-3 items-start">
-              <div className="flex-1 space-y-2">
-                <label className="text-xs font-medium text-muted">What should change in this draft?</label>
-                <textarea
-                  value={regenInstruction}
-                  onChange={e => setRegenInstruction(e.target.value)}
-                  placeholder='e.g. "Make questions harder" · "Reduce to 5 MCQs" · "Focus only on subtopic X"'
-                  rows={2}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder-muted resize-none focus:ring-2 focus:ring-teal focus:outline-none"
-                />
-                {regenError && <p className="text-xs text-error">{regenError}</p>}
+                    {/* Delete */}
+                    <button
+                      onClick={() => { setShowDelete(true); setOverflowOpen(false) }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-error hover:bg-red-50 transition-colors text-left"
+                    >
+                      <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                      Delete draft
+                    </button>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={handleRegenerate}
-                disabled={isRegenerating || !regenInstruction.trim()}
-                className="px-4 py-2 text-sm font-semibold bg-teal text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0 mt-5"
-              >
-                {isRegenerating ? 'Generating…' : 'Apply (1 credit)'}
-              </button>
             </div>
-          )}
+
+            {/* Refine / Edit with AI — collapsible */}
+            <div>
+              <button
+                onClick={() => setRegenOpen(r => !r)}
+                className={`w-full flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium border rounded-xl transition-colors ${
+                  regenOpen ? 'bg-navy text-white border-navy' : 'border-border text-muted hover:border-navy hover:text-navy'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                  </svg>
+                  Refine / Edit with AI
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${regenOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              {regenOpen && (
+                <div className="mt-2 p-4 bg-bg rounded-xl border border-border flex gap-3 items-start">
+                  <div className="flex-1 space-y-2">
+                    <label className="text-xs font-medium text-muted">What should change in this draft?</label>
+                    <textarea
+                      value={regenInstruction}
+                      onChange={e => setRegenInstruction(e.target.value)}
+                      placeholder='e.g. "Make questions harder" · "Reduce to 5 MCQs" · "Focus only on subtopic X"'
+                      rows={2}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder-muted resize-none focus:ring-2 focus:ring-teal focus:outline-none"
+                    />
+                    {regenError && <p className="text-xs text-error">{regenError}</p>}
+                  </div>
+                  <button
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating || !regenInstruction.trim()}
+                    className="px-4 py-2 text-sm font-semibold bg-teal text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0 mt-5"
+                  >
+                    {isRegenerating ? 'Generating…' : 'Apply (1 credit)'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Meta row */}
           <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border text-xs text-muted">
