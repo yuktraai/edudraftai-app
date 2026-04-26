@@ -111,23 +111,27 @@ export async function POST(request) {
 
       if (rpcErr) {
         logger.error('[webhook] apply_purchase_credits failed', rpcErr)
-        await adminSupabase.rpc('write_system_log', {
-          p_college_id: purchase.college_id,
-          p_user_id:    purchase.purchased_by,
-          p_event_type: 'credit_error',
-          p_severity:   'error',
-          p_message:    `Webhook: failed to apply credits for order ${orderId}: ${rpcErr.message}`,
-          p_metadata:   { order_id: orderId, payment_id: paymentId },
-        }).catch(() => {})
+        try {
+          await adminSupabase.rpc('write_system_log', {
+            p_college_id: purchase.college_id,
+            p_user_id:    purchase.purchased_by,
+            p_event_type: 'credit_error',
+            p_severity:   'error',
+            p_message:    `Webhook: failed to apply credits for order ${orderId}: ${rpcErr.message}`,
+            p_metadata:   { order_id: orderId, payment_id: paymentId },
+          })
+        } catch {}
       } else {
-        await adminSupabase.rpc('write_system_log', {
-          p_college_id: purchase.college_id,
-          p_user_id:    purchase.purchased_by,
-          p_event_type: 'admin_action',
-          p_severity:   'info',
-          p_message:    `Webhook: ${purchase.credits_to_award} credits applied via payment.captured`,
-          p_metadata:   { order_id: orderId, payment_id: paymentId, credits: purchase.credits_to_award },
-        }).catch(() => {})
+        try {
+          await adminSupabase.rpc('write_system_log', {
+            p_college_id: purchase.college_id,
+            p_user_id:    purchase.purchased_by,
+            p_event_type: 'admin_action',
+            p_severity:   'info',
+            p_message:    `Webhook: ${purchase.credits_to_award} credits applied via payment.captured`,
+            p_metadata:   { order_id: orderId, payment_id: paymentId, credits: purchase.credits_to_award },
+          })
+        } catch {}
       }
     }
 
@@ -150,14 +154,16 @@ export async function POST(request) {
           .update({ status: 'failed' })
           .eq('id', purchase.id)
 
-        await adminSupabase.rpc('write_system_log', {
-          p_college_id: purchase.college_id,
-          p_user_id:    purchase.purchased_by,
-          p_event_type: 'credit_error',
-          p_severity:   'warning',
-          p_message:    `Payment failed for order ${orderId}`,
-          p_metadata:   { order_id: orderId, error_code: payment.error_code, error_description: payment.error_description },
-        }).catch(() => {})
+        try {
+          await adminSupabase.rpc('write_system_log', {
+            p_college_id: purchase.college_id,
+            p_user_id:    purchase.purchased_by,
+            p_event_type: 'credit_error',
+            p_severity:   'warning',
+            p_message:    `Payment failed for order ${orderId}`,
+            p_metadata:   { order_id: orderId, error_code: payment.error_code, error_description: payment.error_description },
+          })
+        } catch {}
       }
 
       // Check personal purchase
