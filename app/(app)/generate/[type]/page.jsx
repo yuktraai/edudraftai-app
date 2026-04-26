@@ -62,13 +62,13 @@ function LessonNotesParams({ params, onChange }) {
 
 function McqBankParams({ params, onChange }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-xs font-medium text-muted mb-1">Number of Questions</label>
         <select
           value={params.count ?? 10}
           onChange={(e) => onChange({ ...params, count: Number(e.target.value) })}
-          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
         >
           {[5, 10, 15, 20, 25].map((n) => <option key={n} value={n}>{n} questions</option>)}
         </select>
@@ -78,7 +78,7 @@ function McqBankParams({ params, onChange }) {
         <select
           value={params.difficulty ?? 'intermediate'}
           onChange={(e) => onChange({ ...params, difficulty: e.target.value })}
-          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
         >
           {DIFFICULTY_OPTIONS.map((d) => <option key={d} value={d} className="capitalize">{d}</option>)}
         </select>
@@ -89,7 +89,7 @@ function McqBankParams({ params, onChange }) {
 
 function QuestionBankParams({ params, onChange }) {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {[
         { key: 'marks_2', label: '2-Mark Questions' },
         { key: 'marks_5', label: '5-Mark Questions' },
@@ -100,7 +100,7 @@ function QuestionBankParams({ params, onChange }) {
           <select
             value={params[key] ?? (key === 'marks_2' ? 5 : key === 'marks_5' ? 4 : 2)}
             onChange={(e) => onChange({ ...params, [key]: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
           >
             {[2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -153,14 +153,14 @@ function ExamPaperParams({ params, onChange }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-muted mb-1">Total Marks</label>
           <input
             type="number"
             value={params.total_marks ?? selected?.marks ?? 100}
             onChange={e => onChange({ ...params, total_marks: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
           />
         </div>
         <div>
@@ -169,7 +169,7 @@ function ExamPaperParams({ params, onChange }) {
             type="number"
             value={params.duration_mins ?? selected?.duration ?? 180}
             onChange={e => onChange({ ...params, duration_mins: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
           />
         </div>
       </div>
@@ -179,13 +179,13 @@ function ExamPaperParams({ params, onChange }) {
 
 function TestPlanParams({ params, onChange }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-xs font-medium text-muted mb-1">Total Marks</label>
         <select
           value={params.total_marks ?? 30}
           onChange={(e) => onChange({ ...params, total_marks: Number(e.target.value) })}
-          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
         >
           {[20, 25, 30, 40, 50].map((n) => <option key={n} value={n}>{n} marks</option>)}
         </select>
@@ -195,7 +195,7 @@ function TestPlanParams({ params, onChange }) {
         <select
           value={params.duration_mins ?? 60}
           onChange={(e) => onChange({ ...params, duration_mins: Number(e.target.value) })}
-          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+          className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
         >
           {[30, 45, 60, 90, 120].map((n) => <option key={n} value={n}>{n} minutes</option>)}
         </select>
@@ -387,7 +387,7 @@ export default function GenerateTypePage() {
   const canGenerate = topic?.subject_id && !isStreaming && (balance ?? 0) > 0
 
   return (
-    <div className="p-8 max-w-4xl space-y-6">
+    <div className="p-4 md:p-8 max-w-4xl space-y-6 pb-28 md:pb-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
@@ -399,11 +399,11 @@ export default function GenerateTypePage() {
           </svg>
         </button>
         <div>
-          <h1 className="font-heading text-2xl font-bold text-navy">{meta.title}</h1>
+          <h1 className="font-heading text-xl md:text-2xl font-bold text-navy">{meta.title}</h1>
           <p className="text-muted text-sm">{meta.description}</p>
         </div>
         {balance !== null && (
-          <div className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+          <div className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold shrink-0 ${
             balance > 0
               ? 'bg-teal-light border-teal text-teal'
               : 'bg-red-50 border-red-200 text-error'
@@ -414,7 +414,7 @@ export default function GenerateTypePage() {
       </div>
 
       {/* Form */}
-      <div className="bg-surface border border-border rounded-xl p-6 space-y-6">
+      <div className="bg-surface border border-border rounded-xl p-4 md:p-6 space-y-6">
         {/* My Templates — hidden for lesson notes (only 1 param, not worth templating) */}
         {type !== 'lesson_notes' && templates.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-border -mt-2">
@@ -458,8 +458,8 @@ export default function GenerateTypePage() {
           {type === 'exam_paper'    && <ExamPaperParams    params={params} onChange={setParams} />}
         </div>
 
-        {/* Generate button */}
-        <div className="pt-1">
+        {/* Generate button — desktop inline version (hidden on mobile) */}
+        <div className="pt-1 hidden md:block">
           {balance === 0 ? (
             <div className="flex items-center gap-2 text-sm text-error bg-red-50 border border-red-200 rounded-lg px-4 py-3">
               <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -578,6 +578,33 @@ export default function GenerateTypePage() {
           {templateMsg.text}
         </div>
       )}
+
+      {/* Mobile sticky Generate button — visible only on small screens */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-3 bg-bg/95 backdrop-blur border-t border-border">
+        {balance === 0 ? (
+          <div className="flex items-center gap-2 text-sm text-error bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            Out of credits — contact your college admin.
+          </div>
+        ) : (
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className={`w-full py-3.5 rounded-xl text-sm font-semibold min-h-[48px] transition-opacity ${
+              canGenerate
+                ? 'bg-teal text-white hover:opacity-90'
+                : 'bg-teal/40 text-white cursor-not-allowed'
+            }`}
+          >
+            {isStreaming ? 'Generating…' : 'Generate  (1 credit)'}
+          </button>
+        )}
+        {!topic?.subject_id && balance > 0 && (
+          <p className="text-xs text-muted text-center mt-1.5">Select a topic above to enable generation.</p>
+        )}
+      </div>
     </div>
   )
 }

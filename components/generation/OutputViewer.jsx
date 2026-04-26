@@ -26,7 +26,7 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
   return (
     <div className="bg-surface border border-border rounded-xl overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-bg flex-wrap gap-2">
+      <div className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-border bg-bg flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {isStreaming ? (
             <>
@@ -43,12 +43,13 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Toolbar buttons — 2-col grid on mobile to prevent overflow */}
+        <div className="grid grid-cols-2 gap-1.5 md:flex md:items-center md:gap-2 md:flex-wrap w-full md:w-auto mt-2 md:mt-0">
           {/* Answer key toggle — only for MCQ/Question Bank after streaming */}
           {!isStreaming && hasAnswerKey && (
             <button
               onClick={() => setShowKey(p => !p)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+              className={`col-span-2 md:col-span-1 flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 text-xs font-medium rounded-lg border transition-colors min-h-[44px] md:min-h-0 ${
                 showKey
                   ? 'bg-teal text-white border-teal hover:bg-teal-2'
                   : 'text-muted border-border hover:border-teal hover:text-teal'
@@ -72,22 +73,25 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
                   <CopyButton
                     content={toPlainText(content, { includeKey: true })}
                     label="Copy w/ Answers"
+                    className="min-h-[44px] md:min-h-0"
                   />
                   <CopyButton
                     content={toPlainText(content, { includeKey: false })}
                     label="Copy w/o Answers"
+                    className="min-h-[44px] md:min-h-0"
                   />
                 </>
               ) : (
                 <CopyButton
                   content={toPlainText(content, { includeKey: true })}
                   label="Copy"
+                  className="min-h-[44px] md:min-h-0"
                 />
               )}
               {generationId && (
                 <a
                   href={`/drafts/${generationId}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal border border-teal rounded-lg hover:bg-teal hover:text-white transition-colors"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 text-xs font-medium text-teal border border-teal rounded-lg hover:bg-teal hover:text-white transition-colors min-h-[44px] md:min-h-0"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
@@ -98,7 +102,7 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
               {!isStreaming && content && onRegenerate && (
                 <button
                   onClick={() => setRegenOpen(r => !r)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2.5 md:py-1.5 text-xs font-medium rounded-lg border transition-colors min-h-[44px] md:min-h-0 ${
                     regenOpen
                       ? 'bg-navy text-white border-navy'
                       : 'text-muted border-border hover:border-navy hover:text-navy'
@@ -117,13 +121,13 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
 
       {/* Refine panel */}
       {regenOpen && (
-        <div className="px-5 py-4 border-b border-border bg-bg flex gap-3 items-start">
+        <div className="px-4 md:px-5 py-4 border-b border-border bg-bg flex flex-col md:flex-row gap-3 items-stretch md:items-start">
           <textarea
             value={regenInstruction}
             onChange={e => setRegenInstruction(e.target.value)}
             placeholder='What should change? e.g. "Make questions harder" or "Add 2 more questions on subtopic X"'
-            rows={2}
-            className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder-muted resize-none focus:ring-2 focus:ring-teal focus:outline-none"
+            rows={3}
+            className="flex-1 px-3 py-2 text-base md:text-sm rounded-lg border border-border bg-surface text-text placeholder-muted resize-none focus:ring-2 focus:ring-teal focus:outline-none"
           />
           <button
             onClick={() => {
@@ -133,7 +137,7 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
               setRegenInstruction('')
             }}
             disabled={!regenInstruction.trim()}
-            className="px-4 py-2 text-sm font-semibold bg-teal text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0"
+            className="px-4 py-3 md:py-2 text-sm font-semibold bg-teal text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 shrink-0 min-h-[44px]"
           >
             Apply (1 credit)
           </button>
@@ -141,7 +145,7 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
       )}
 
       {/* Content area */}
-      <div className="p-5 max-h-[60vh] overflow-y-auto">
+      <div className="p-4 md:p-5 max-h-[60vh] overflow-y-auto overflow-x-hidden">
         {!isStreaming && isDemo && (
           <div className="mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
             <svg className="w-4 h-4 text-warning shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -188,7 +192,7 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
           )}
           <div style={{ position: 'relative', zIndex: 2 }}>
             {isStreaming ? (
-              <pre className="whitespace-pre-wrap font-sans text-sm text-text leading-relaxed">
+              <pre className="whitespace-pre-wrap font-sans text-base md:text-sm text-text leading-relaxed">
                 {content}
                 <span className="inline-block w-0.5 h-4 bg-teal animate-pulse ml-0.5 align-middle" />
               </pre>
