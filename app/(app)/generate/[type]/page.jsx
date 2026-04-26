@@ -251,6 +251,36 @@ export default function GenerateTypePage() {
       .catch(() => setBalance(0))
   }, [output]) // re-fetch after each generation
 
+  // Apply user preference defaults to form on first load
+  useEffect(() => {
+    if (!type) return
+    fetch('/api/users/profile/preferences')
+      .then(r => r.json())
+      .then(({ preferences }) => {
+        if (!preferences) return
+        setParams((current) => {
+          const next = { ...current }
+          // Apply difficulty default for types that have it
+          if (preferences.default_difficulty && (type === 'lesson_notes' || type === 'mcq_bank')) {
+            // Map profile difficulty (easy/medium/hard) to generation page values (basic/intermediate/advanced)
+            const diffMap = { easy: 'basic', medium: 'intermediate', hard: 'advanced' }
+            const mapped = diffMap[preferences.default_difficulty]
+            if (mapped && next.difficulty === (PARAM_DEFAULTS[type]?.difficulty)) {
+              next.difficulty = mapped
+            }
+          }
+          // Apply mcq count default
+          if (preferences.default_mcq_count && type === 'mcq_bank') {
+            if (next.count === (PARAM_DEFAULTS.mcq_bank?.count)) {
+              next.count = preferences.default_mcq_count
+            }
+          }
+          return next
+        })
+      })
+      .catch(() => {})
+  }, [type])
+
   // Fetch saved templates for this content type
   useEffect(() => {
     if (!type) return

@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { TemplateManager } from '@/components/profile/TemplateManager'
+import { GenerationDefaults } from '@/components/profile/GenerationDefaults'
+import { NotificationPreferences } from '@/components/profile/NotificationPreferences'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
   const supabase = createClient()
@@ -10,7 +14,7 @@ export default async function ProfilePage() {
 
   const { data: profile } = await adminSupabase
     .from('users')
-    .select('id, name, email, role, college_id, colleges(name)')
+    .select('id, name, email, role, college_id, preferences, colleges(name)')
     .eq('id', user.id)
     .single()
 
@@ -41,6 +45,16 @@ export default async function ProfilePage() {
       <div className="bg-surface border border-border rounded-xl p-6 space-y-4">
         <h2 className="text-sm font-semibold text-text">My Saved Templates</h2>
         <TemplateManager initialTemplates={templates ?? []} />
+      </div>
+
+      {/* Generation Defaults */}
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <GenerationDefaults initialPreferences={profile?.preferences ?? {}} />
+      </div>
+
+      {/* Email Notifications */}
+      <div className="bg-surface border border-border rounded-xl p-6">
+        <NotificationPreferences initialPreferences={profile?.preferences ?? {}} />
       </div>
     </div>
   )
