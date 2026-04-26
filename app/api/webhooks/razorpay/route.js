@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
+import { createAndSendInvoice } from '@/lib/invoices'
 
 // POST /api/webhooks/razorpay
 // Handles: payment.captured (safety net), payment.failed
@@ -32,13 +33,65 @@ export async function POST(request) {
       const orderId  = payment.order_id
       const paymentId = payment.id
 
-      // Idempotency: only process if still in 'created' state
+      // ── Check college pool purchase first ──────────────────────────────────
       const { data: purchase } = await adminSupabase
         .from('credit_purchases')
         .select('id, college_id, purchased_by, credits_to_award, amount_paise, status')
         .eq('razorpay_order_id', orderId)
         .single()
 
+      // ── Then check personal purchase ────────────────────────────────────────
+      const { data: personalPurchase } = !purchase ? await adminSupabase
+        .from('personal_credit_purchases')
+        .select('id, user_id, college_id, credits_to_award, amount_paise, status')
+        .eq('razorpay_order_id', orderId)
+        .single() : { data: null }
+
+      // ── Handle personal purchase (safety net) ───────────────────────────────
+      if (personalPurchase) {
+        if (personalPurchase.status === 'paid') {
+          return Response.json({ ok: true, skipped: 'personal_already_processed' })
+        }
+        // Apply personal credits as safety net
+        const { error: ledgerErr } = await adminSupabase
+          .from('personal_credit_ledger')
+          .insert({
+            user_id:      personalPurchase.user_id,
+            college_id:   personalPurchase.college_id,
+            amount:       personalPurchase.credits_to_award,
+            reason:       'self_purchase',
+            reference_id: personalPurchase.id,
+          })
+        if (!ledgerErr) {
+          await adminSupabase
+            .from('personal_credit_purchases')
+            .update({ status: 'paid', razorpay_payment_id: paymentId })
+            .eq('id', personalPurchase.id)
+          // Generate invoice
+          try {
+            const { data: buyer } = await adminSupabase
+              .from('users').select('name, email, colleges(name)').eq('id', personalPurchase.user_id).single()
+            await createAndSendInvoice({
+              userId:      personalPurchase.user_id,
+              collegeId:   personalPurchase.college_id,
+              paymentId,
+              credits:     personalPurchase.credits_to_award,
+              amountPaise: personalPurchase.amount_paise,
+              buyerName:   buyer?.name ?? 'Lecturer',
+              buyerEmail:  buyer?.email ?? '',
+              collegeName: buyer?.colleges?.name ?? '',
+              invoiceType: 'personal_purchase',
+            })
+          } catch (invoiceErr) {
+            logger.error('[webhook] personal invoice failed', invoiceErr.message)
+          }
+        } else {
+          logger.error('[webhook] personal ledger insert failed', ledgerErr.message)
+        }
+        return Response.json({ ok: true })
+      }
+
+      // ── Handle college pool purchase ────────────────────────────────────────
       if (!purchase) {
         logger.error('[webhook] Purchase not found for order', orderId)
         return Response.json({ ok: true }) // still 200
@@ -83,6 +136,7 @@ export async function POST(request) {
       const payment = event.payload.payment.entity
       const orderId = payment.order_id
 
+      // Check pool purchase
       const { data: purchase } = await adminSupabase
         .from('credit_purchases')
         .select('id, college_id, purchased_by')
@@ -104,6 +158,21 @@ export async function POST(request) {
           p_message:    `Payment failed for order ${orderId}`,
           p_metadata:   { order_id: orderId, error_code: payment.error_code, error_description: payment.error_description },
         }).catch(() => {})
+      }
+
+      // Check personal purchase
+      const { data: personalPurchase } = await adminSupabase
+        .from('personal_credit_purchases')
+        .select('id')
+        .eq('razorpay_order_id', orderId)
+        .eq('status', 'created')
+        .single()
+
+      if (personalPurchase) {
+        await adminSupabase
+          .from('personal_credit_purchases')
+          .update({ status: 'failed' })
+          .eq('id', personalPurchase.id)
       }
     }
 
