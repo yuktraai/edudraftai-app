@@ -8,8 +8,9 @@ import { SignOutButton } from '@/components/layout/SignOutButton'
 const NAV_LINKS = {
   super_admin: [
     { label: 'Colleges',         href: '/super-admin/colleges' },
-    { label: 'Syllabus Manager', href: '/super-admin/syllabus' },
+    { label: 'Departments',      href: '/super-admin/departments' },
     { label: 'Subjects',         href: '/super-admin/subjects' },
+    { label: 'Syllabus Manager', href: '/super-admin/syllabus' },
     { label: 'Analytics',        href: '/super-admin/analytics' },
     { label: 'Webinars',         href: '/super-admin/webinars' },
     { label: 'Logs',             href: '/super-admin/logs' },
