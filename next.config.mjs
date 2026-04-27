@@ -23,7 +23,14 @@ const securityHeaders = [
 const nextConfig = {
   experimental: {
     // Next.js 14 key (renamed to serverExternalPackages in Next.js 15)
-    serverComponentsExternalPackages: ['pdf-parse', 'razorpay'],
+    serverComponentsExternalPackages: ['pdf-parse', 'razorpay', 'pdfkit'],
+
+    // Include pdfkit's AFM font-metrics files in the Vercel deployment bundle.
+    // Without this, Vercel's file-tracing strips them out and pdfkit throws
+    // ENOENT: no such file or directory, open '...Helvetica.afm'
+    outputFileTracingIncludes: {
+      '**/*': ['./node_modules/pdfkit/js/data/**/*'],
+    },
   },
 
   async headers() {
