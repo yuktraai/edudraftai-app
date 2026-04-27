@@ -132,6 +132,28 @@ export async function POST(request) {
             p_metadata:   { order_id: orderId, payment_id: paymentId, credits: purchase.credits_to_award },
           })
         } catch {}
+
+        // ── Generate invoice for pool purchase ────────────────────────────────
+        try {
+          const { data: buyer } = await adminSupabase
+            .from('users')
+            .select('name, email, colleges(name)')
+            .eq('id', purchase.purchased_by)
+            .single()
+          await createAndSendInvoice({
+            userId:      purchase.purchased_by,
+            collegeId:   purchase.college_id,
+            paymentId,
+            credits:     purchase.credits_to_award,
+            amountPaise: purchase.amount_paise,
+            buyerName:   buyer?.name ?? 'College Admin',
+            buyerEmail:  buyer?.email ?? '',
+            collegeName: buyer?.colleges?.name ?? '',
+            invoiceType: 'pool_purchase',
+          })
+        } catch (invoiceErr) {
+          logger.error('[webhook] pool invoice failed', invoiceErr.message)
+        }
       }
     }
 

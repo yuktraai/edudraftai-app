@@ -56,12 +56,40 @@ export async function POST(request) {
       .single()
 
     if (!purchase) {
-      // Already processed — look up the paid record to return credits_added
+      // Already processed (webhook beat us here) — look up paid record
       const { data: paidPurchase } = await adminSupabase
         .from('credit_purchases')
-        .select('credits_to_award')
+        .select('id, college_id, purchased_by, credits_to_award, amount_paise')
         .eq('razorpay_order_id', razorpay_order_id)
         .single()
+
+      // Generate invoice if the webhook didn't get to it yet
+      if (paidPurchase) {
+        const { count: invoiceExists } = await adminSupabase
+          .from('invoices')
+          .select('id', { count: 'exact', head: true })
+          .eq('payment_id', razorpay_payment_id)
+
+        if (!invoiceExists) {
+          try {
+            const { data: buyerProfile } = await adminSupabase
+              .from('users').select('name, email, colleges(name)').eq('id', user.id).single()
+            await createAndSendInvoice({
+              userId:      user.id,
+              collegeId:   paidPurchase.college_id,
+              paymentId:   razorpay_payment_id,
+              credits:     paidPurchase.credits_to_award,
+              amountPaise: paidPurchase.amount_paise,
+              buyerName:   buyerProfile?.name ?? 'College Admin',
+              buyerEmail:  buyerProfile?.email ?? user.email,
+              collegeName: buyerProfile?.colleges?.name ?? '',
+              invoiceType: 'pool_purchase',
+            })
+          } catch (invoiceErr) {
+            logger.error('[verify] already_processed invoice failed', invoiceErr.message)
+          }
+        }
+      }
 
       return Response.json({
         success:           true,

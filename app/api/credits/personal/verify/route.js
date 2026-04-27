@@ -43,12 +43,38 @@ export async function POST(request) {
     // ── 2. Idempotency — check if already paid ────────────────────────────────
     const { data: paidPurchase } = await adminSupabase
       .from('personal_credit_purchases')
-      .select('id, credits_to_award, status')
+      .select('id, credits_to_award, amount_paise, status')
       .eq('razorpay_order_id', razorpay_order_id)
       .eq('user_id', user.id)
       .single()
 
     if (paidPurchase?.status === 'paid') {
+      // Webhook may have processed this — generate invoice if not yet done
+      const { count: invoiceExists } = await adminSupabase
+        .from('invoices')
+        .select('id', { count: 'exact', head: true })
+        .eq('payment_id', razorpay_payment_id)
+
+      if (!invoiceExists) {
+        try {
+          const { data: buyerProfile } = await adminSupabase
+            .from('users').select('name, email, college_id, colleges(name)').eq('id', user.id).single()
+          await createAndSendInvoice({
+            userId:      user.id,
+            collegeId:   buyerProfile?.college_id,
+            paymentId:   razorpay_payment_id,
+            credits:     paidPurchase.credits_to_award,
+            amountPaise: paidPurchase.amount_paise,
+            buyerName:   buyerProfile?.name ?? 'Lecturer',
+            buyerEmail:  buyerProfile?.email ?? user.email,
+            collegeName: buyerProfile?.colleges?.name ?? '',
+            invoiceType: 'personal_purchase',
+          })
+        } catch (invoiceErr) {
+          logger.error('[personal/verify] already_processed invoice failed', invoiceErr.message)
+        }
+      }
+
       return Response.json({
         success:           true,
         already_processed: true,
