@@ -222,11 +222,25 @@ export async function POST(request) {
       ? params.subtopics
       : (chunk?.subtopics ?? [])
 
+  // ── 7a. Fetch reference books for this subject (Phase 40) ────────────────
+  let referenceBooks = []
+  try {
+    const { data: books } = await adminSupabase
+      .from('subject_reference_books')
+      .select('title, author, edition, publisher, chapter_hint, is_primary')
+      .eq('subject_id', subject_id)
+      .order('is_primary', { ascending: false })
+    referenceBooks = books ?? []
+  } catch {
+    // Non-fatal — continue without reference book injection
+  }
+
   const promptParams = {
-    subject_name: subject.name,
-    semester:     subject.semester,
-    topic:        chunk?.topic ?? params.topic ?? subject.name,
-    subtopics:    selectedSubtopics,
+    subject_name:   subject.name,
+    semester:       subject.semester,
+    topic:          chunk?.topic ?? params.topic ?? subject.name,
+    subtopics:      selectedSubtopics,
+    referenceBooks,
     ...params,   // topic + subtopics from params override if present
   }
 

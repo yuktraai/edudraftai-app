@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 
@@ -57,7 +58,7 @@ export function SubjectTable({ subjects, onEdit, onDelete }) {
                 }
               </td>
               <td className="px-5 py-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -65,6 +66,12 @@ export function SubjectTable({ subjects, onEdit, onDelete }) {
                   >
                     Edit
                   </Button>
+                  <Link
+                    href={`/super-admin/subjects/${subject.id}/reference-books`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border text-xs font-medium text-muted hover:border-teal hover:text-teal transition-colors"
+                  >
+                    Books
+                  </Link>
                   <Button
                     size="sm"
                     variant="danger"
