@@ -21,6 +21,10 @@ async function getSuperAdmin() {
 }
 
 // GET — list subjects, supports ?college_id and ?department_id filters
+// Returns { data } — an array deduplicated by name+code+semester, each with:
+//   subject_ids[]  — all DB row IDs that share this name/code/semester
+//   dept_names[]   — department names corresponding to each subject_id
+// The upload + copy pages rely on this shape.
 export async function GET(request) {
   try {
     const user = await getSuperAdmin()
@@ -32,17 +36,43 @@ export async function GET(request) {
 
     let query = adminSupabase
       .from('subjects')
-      .select('id, name, code, semester, is_active, college_id, department_id, colleges(name), departments(name)')
+      .select('id, name, code, semester, is_active, college_id, department_id, departments(name)')
+      .eq('is_active', true)
       .order('semester')
       .order('name')
 
     if (college_id)    query = query.eq('college_id', college_id)
     if (department_id) query = query.eq('department_id', department_id)
 
-    const { data, error } = await query
+    const { data: rows, error } = await query
     if (error) throw error
 
-    return Response.json({ subjects: data ?? [] })
+    // Deduplicate by name+code+semester — collapse department rows into arrays
+    const map = new Map()
+    for (const row of rows ?? []) {
+      const key = `${row.name}||${row.code}||${row.semester}`
+      if (!map.has(key)) {
+        map.set(key, {
+          id:          row.id,   // primary representative id
+          name:        row.name,
+          code:        row.code,
+          semester:    row.semester,
+          college_id:  row.college_id,
+          is_active:   row.is_active,
+          subject_ids: [row.id],
+          dept_names:  [row.departments?.name ?? ''],
+        })
+      } else {
+        const entry = map.get(key)
+        entry.subject_ids.push(row.id)
+        entry.dept_names.push(row.departments?.name ?? '')
+      }
+    }
+
+    const data = Array.from(map.values())
+    // `data`     = deduplicated list (used by upload + copy syllabus pages)
+    // `subjects` = raw rows (used by the subjects management table)
+    return Response.json({ data, subjects: rows ?? [] })
   } catch (err) {
     logger.error('[GET /api/super-admin/subjects]', err)
     return Response.json({ error: 'Internal server error', code: err.message }, { status: 500 })
