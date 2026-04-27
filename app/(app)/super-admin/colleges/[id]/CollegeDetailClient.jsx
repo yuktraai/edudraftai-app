@@ -184,7 +184,7 @@ export function InviteLecturerClient({ collegeId }) {
     if (!email.trim()) return
     setLoading(true); setError(null); setSuccess(false)
 
-    const res = await fetch('/api/admin/invite', {
+    const res = await fetch('/api/admin/users/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), role: 'lecturer', college_id: collegeId }),
