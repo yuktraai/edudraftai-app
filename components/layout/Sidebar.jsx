@@ -11,6 +11,7 @@ const NAV_LINKS = {
     { label: 'Departments',      href: '/super-admin/departments' },
     { label: 'Subjects',         href: '/super-admin/subjects' },
     { label: 'Syllabus Manager', href: '/super-admin/syllabus' },
+    { label: 'Assign Credits',   href: '/super-admin/credits' },
     { label: 'Analytics',        href: '/super-admin/analytics' },
     { label: 'Webinars',         href: '/super-admin/webinars' },
     { label: 'Logs',             href: '/super-admin/logs' },
