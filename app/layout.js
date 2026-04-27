@@ -1,6 +1,5 @@
 import './globals.css'
 import 'katex/dist/katex.min.css'
-import Script from 'next/script'
 
 export const metadata = {
   title:       'EduDraftAI — AI Teaching Content for SCTEVT Colleges',
@@ -19,20 +18,8 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.3.1/driver.min.css"
-          crossOrigin="anonymous"
-        />
-      </head>
       <body className="antialiased">
         {children}
-        <Script
-          src="https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.3.1/driver.min.js.iife.js"
-          strategy="afterInteractive"
-          crossOrigin="anonymous"
-        />
       </body>
     </html>
   )

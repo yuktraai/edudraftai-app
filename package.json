@@ -15,6 +15,7 @@
     "@supabase/supabase-js": "^2.103.0",
     "archiver": "^7.0.1",
     "docx": "^9.6.1",
+    "driver.js": "^1.4.0",
     "katex": "^0.16.45",
     "next": "14.2.35",
     "openai": "^6.34.0",
