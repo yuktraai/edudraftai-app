@@ -23,13 +23,15 @@ export default function RootLayout({ children }) {
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.3.1/driver.min.css"
+          crossOrigin="anonymous"
         />
       </head>
       <body className="antialiased">
         {children}
         <Script
-          src="https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.3.1/driver.min.js"
+          src="https://cdnjs.cloudflare.com/ajax/libs/driver.js/1.3.1/driver.min.js.iife.js"
           strategy="afterInteractive"
+          crossOrigin="anonymous"
         />
       </body>
     </html>

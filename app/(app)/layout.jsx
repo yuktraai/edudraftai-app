@@ -25,6 +25,7 @@ export default async function AppLayout({ children }) {
   // Fetch credit balance server-side for lecturer + college_admin
   let creditBalance = null
   let personalCreditBalance = null
+  let demoCreditsRemaining = 0
   let hasZeroBalanceLecturers = false
 
   if (profile.role === 'lecturer' || profile.role === 'college_admin') {
@@ -39,6 +40,21 @@ export default async function AppLayout({ children }) {
       .select('amount')
       .eq('user_id', user.id)
     personalCreditBalance = (personalRows ?? []).reduce((s, r) => s + r.amount, 0)
+
+    // Compute demo credits remaining for new lecturers with no admin-granted credits
+    const { data: userRecord } = await adminSupabase
+      .from('users').select('demo_credits_used').eq('id', user.id).single()
+    const demoUsed = userRecord?.demo_credits_used ?? 0
+    if (demoUsed < 3) {
+      const { data: adminCredits } = await adminSupabase
+        .from('credit_ledger').select('id')
+        .eq('user_id', user.id)
+        .in('reason', ['admin_grant', 'monthly_allocation', 'refund'])
+        .limit(1)
+      if ((adminCredits?.length ?? 0) === 0) {
+        demoCreditsRemaining = 3 - demoUsed
+      }
+    }
   }
 
   // For college_admin: check if any lecturer in their college has 0 credits
@@ -73,6 +89,7 @@ export default async function AppLayout({ children }) {
       name={profile.name}
       creditBalance={creditBalance}
       personalCreditBalance={personalCreditBalance}
+      demoCreditsRemaining={demoCreditsRemaining}
       hasZeroBalanceLecturers={hasZeroBalanceLecturers}
       userId={user.id}
       onboardingCompleted={profile.onboarding_completed ?? false}

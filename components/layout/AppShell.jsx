@@ -12,7 +12,7 @@ import { NotificationBell }    from './NotificationBell'
  * Desktop: sidebar always visible on the left.
  * Mobile (< lg): sidebar hidden, hamburger toggles a slide-out drawer + backdrop.
  */
-export function AppShell({ role, name, creditBalance, personalCreditBalance, hasZeroBalanceLecturers, userId, onboardingCompleted, children }) {
+export function AppShell({ role, name, creditBalance, personalCreditBalance, demoCreditsRemaining = 0, hasZeroBalanceLecturers, userId, onboardingCompleted, children }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -36,6 +36,7 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, has
           name={name}
           creditBalance={creditBalance}
           personalCreditBalance={personalCreditBalance}
+          demoCreditsRemaining={demoCreditsRemaining}
           hasZeroBalanceLecturers={hasZeroBalanceLecturers}
         />
       </div>
@@ -60,6 +61,7 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, has
           name={name}
           creditBalance={creditBalance}
           personalCreditBalance={personalCreditBalance}
+          demoCreditsRemaining={demoCreditsRemaining}
           hasZeroBalanceLecturers={hasZeroBalanceLecturers}
           onClose={() => setOpen(false)}
         />
@@ -84,9 +86,12 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, has
             <NotificationBell />
             {creditBalance !== null && (
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                creditBalance > 0 ? 'bg-teal text-white' : 'bg-error text-white'
+                (creditBalance > 0 || demoCreditsRemaining > 0) ? 'bg-teal text-white' : 'bg-error text-white'
               }`}>
-                {creditBalance} credits
+                {demoCreditsRemaining > 0 && creditBalance === 0
+                  ? `${demoCreditsRemaining} demo`
+                  : `${creditBalance} credits`
+                }
               </span>
             )}
           </div>
@@ -98,8 +103,8 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, has
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          {/* Credit warning banner — shown for lecturer/college_admin when balance ≤ 20 */}
-          {creditBalance !== null && creditBalance <= 20 && (
+          {/* Credit warning banner — shown for lecturer/college_admin when balance ≤ 20 and no demo credits available */}
+          {creditBalance !== null && creditBalance <= 20 && demoCreditsRemaining === 0 && (
             <CreditWarning balance={creditBalance} role={role} />
           )}
           {children}

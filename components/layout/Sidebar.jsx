@@ -141,7 +141,7 @@ function NameEditor({ initialName }) {
   )
 }
 
-export function Sidebar({ role, name, creditBalance, personalCreditBalance, hasZeroBalanceLecturers, onClose }) {
+export function Sidebar({ role, name, creditBalance, personalCreditBalance, demoCreditsRemaining = 0, hasZeroBalanceLecturers, onClose }) {
   const pathname = usePathname()
   const links    = NAV_LINKS[role] ?? NAV_LINKS.lecturer
 
@@ -176,8 +176,9 @@ export function Sidebar({ role, name, creditBalance, personalCreditBalance, hasZ
         <div
           id="sidebar-credits"
           className={`mx-3 mt-3 px-3 py-2.5 rounded-lg flex items-center justify-between ${
-            creditBalance <= 5 ? 'bg-red-900/20 border border-red-800/30' :
-            creditBalance <= 20 ? 'bg-amber-900/20 border border-amber-800/30' :
+            demoCreditsRemaining > 0 && creditBalance === 0 ? 'bg-teal/10 border border-teal/30' :
+            creditBalance <= 5   ? 'bg-red-900/20 border border-red-800/30' :
+            creditBalance <= 20  ? 'bg-amber-900/20 border border-amber-800/30' :
             'bg-navy-2'
           }`}
         >
@@ -186,15 +187,21 @@ export function Sidebar({ role, name, creditBalance, personalCreditBalance, hasZ
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-xs text-slate-300">Credits</span>
+            <div>
+              <span className="text-xs text-slate-300">Credits</span>
+              {demoCreditsRemaining > 0 && creditBalance === 0 && (
+                <p className="text-[10px] text-teal leading-none mt-0.5">demo</p>
+              )}
+            </div>
           </div>
           <span className={`text-sm font-bold ${
+            demoCreditsRemaining > 0 && creditBalance === 0 ? 'text-teal' :
             creditBalance > 20  ? 'text-teal'
             : creditBalance > 5 ? 'text-warning'
             : creditBalance > 0 ? 'text-error animate-pulse'
             : 'text-error'
           }`}>
-            {creditBalance}
+            {demoCreditsRemaining > 0 && creditBalance === 0 ? demoCreditsRemaining : creditBalance}
           </span>
         </div>
       )}
