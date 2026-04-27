@@ -1,8 +1,10 @@
 import { adminSupabase } from '@/lib/supabase/admin'
-import { getResend }     from '@/lib/email/resend'
+import { Resend }        from 'resend'
 import { waitlistConfirmationEmail } from '@/lib/email/templates/waitlist-confirmation'
 import { z }            from 'zod'
 import { logger }       from '@/lib/logger'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 const schema = z.object({
   name:         z.string().min(2).max(100).trim(),
@@ -42,8 +44,8 @@ export async function POST(request) {
       // Send confirmation email (fire-and-forget — don't fail the request if email fails)
       try {
         const { subject, html } = waitlistConfirmationEmail({ name, email })
-        const result = await getResend().emails.send({
-          from:    'EduDraftAI <waitlist@edudraftai.com>',
+        const result = await resend.emails.send({
+          from:    `EduDraftAI <${process.env.RESEND_FROM_EMAIL}>`,
           to:      email,
           subject,
           html,
