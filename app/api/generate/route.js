@@ -178,7 +178,8 @@ export async function POST(request) {
 
   const totalBalance = (balance ?? 0) + personalBalance
 
-  if (totalBalance <= 0) {
+  // isDemo bypasses the zero-balance block — demo users don't need pool/personal credits
+  if (totalBalance <= 0 && !isDemo) {
     const noCreditsMsg = demoCreditsUsed >= 3
       ? 'Your 3 demo credits have been used. Ask your college admin to allocate credits to continue generating.'
       : 'Insufficient credits. Contact your college admin to allocate credits to your account.'
