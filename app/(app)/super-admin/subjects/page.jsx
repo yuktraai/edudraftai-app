@@ -11,6 +11,7 @@ export default function SuperAdminSubjectsPage() {
   const [subjects, setSubjects]               = useState([])
   const [filterCollegeId, setFilterCollegeId] = useState('')
   const [filterDeptId, setFilterDeptId]       = useState('')
+  const [filterSemester, setFilterSemester]   = useState('')
   const [loading, setLoading]                 = useState(true)
   const [showModal, setShowModal]             = useState(false)
   const [editingSubject, setEditingSubject]   = useState(null)
@@ -45,6 +46,7 @@ export default function SuperAdminSubjectsPage() {
       const params = new URLSearchParams()
       if (filterCollegeId) params.set('college_id', filterCollegeId)
       if (filterDeptId)    params.set('department_id', filterDeptId)
+      if (filterSemester)  params.set('semester', filterSemester)
       const res = await fetch(`/api/super-admin/subjects?${params.toString()}`)
       const json = await res.json()
       setSubjects(json.subjects ?? [])
@@ -53,7 +55,7 @@ export default function SuperAdminSubjectsPage() {
     } finally {
       setLoading(false)
     }
-  }, [filterCollegeId, filterDeptId])
+  }, [filterCollegeId, filterDeptId, filterSemester])
 
   useEffect(() => {
     fetchSubjects()
@@ -66,6 +68,10 @@ export default function SuperAdminSubjectsPage() {
 
   function handleDeptFilterChange(e) {
     setFilterDeptId(e.target.value)
+  }
+
+  function handleSemesterFilterChange(e) {
+    setFilterSemester(e.target.value)
   }
 
   function openAdd() {
@@ -136,6 +142,21 @@ export default function SuperAdminSubjectsPage() {
             </option>
             {departments.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Semester filter */}
+        <div className="w-40 shrink-0">
+          <label className="block text-xs font-medium text-muted mb-1">Semester</label>
+          <select
+            value={filterSemester}
+            onChange={handleSemesterFilterChange}
+            className="w-full border border-border rounded-lg px-3 py-2 text-sm text-text bg-surface focus:outline-none focus:ring-2 focus:ring-teal/40"
+          >
+            <option value="">All semesters</option>
+            {[1, 2, 3, 4, 5, 6].map((s) => (
+              <option key={s} value={s}>Semester {s}</option>
             ))}
           </select>
         </div>

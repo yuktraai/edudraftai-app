@@ -34,16 +34,18 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const college_id    = searchParams.get('college_id')
     const department_id = searchParams.get('department_id')
+    const semester      = searchParams.get('semester')
 
     let query = adminSupabase
       .from('subjects')
-      .select('id, name, code, semester, is_active, college_id, department_id, departments(name)')
+      .select('id, name, code, semester, is_active, has_math, college_id, department_id, departments(name)')
       .eq('is_active', true)
       .order('semester')
       .order('name')
 
     if (college_id)    query = query.eq('college_id', college_id)
     if (department_id) query = query.eq('department_id', department_id)
+    if (semester)      query = query.eq('semester', Number(semester))
 
     const { data: rows, error } = await query
     if (error) throw error
