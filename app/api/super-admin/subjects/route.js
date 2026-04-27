@@ -9,6 +9,7 @@ const createSchema = z.object({
   name:          z.string().min(2).max(200),
   code:          z.string().max(20).optional().default(''),
   semester:      z.number().int().min(1).max(6),
+  has_math:      z.boolean().optional().default(false),
 })
 
 async function getSuperAdmin() {
@@ -100,6 +101,7 @@ export async function POST(request) {
         name:          parsed.data.name,
         code:          parsed.data.code ? parsed.data.code.toUpperCase() : '',
         semester:      parsed.data.semester,
+        has_math:      parsed.data.has_math ?? false,
         is_active:     true,
       })
       .select('id, name, code, semester, is_active, college_id, department_id, colleges(name), departments(name)')

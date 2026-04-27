@@ -13,6 +13,7 @@ export function SubjectFormModal({ open, onClose, onSaved, subject, colleges }) 
   const [name, setName]               = useState('')
   const [code, setCode]               = useState('')
   const [semester, setSemester]       = useState('')
+  const [hasMath, setHasMath]         = useState(false)
   const [departments, setDepartments] = useState([])
   const [loadingDepts, setLoadingDepts] = useState(false)
   const [saving, setSaving]           = useState(false)
@@ -27,12 +28,14 @@ export function SubjectFormModal({ open, onClose, onSaved, subject, colleges }) 
       setName(subject.name ?? '')
       setCode(subject.code ?? '')
       setSemester(String(subject.semester ?? ''))
+      setHasMath(subject.has_math ?? false)
     } else {
       setCollegeId('')
       setDeptId('')
       setName('')
       setCode('')
       setSemester('')
+      setHasMath(false)
       setDepartments([])
     }
     setError('')
@@ -97,6 +100,7 @@ export function SubjectFormModal({ open, onClose, onSaved, subject, colleges }) 
           name:          name.trim(),
           code:          code.trim(),
           semester:      Number(semester),
+          has_math:      hasMath,
         }),
       })
       const json = await res.json()
@@ -220,6 +224,38 @@ export function SubjectFormModal({ open, onClose, onSaved, subject, colleges }) 
                 <option key={s} value={s}>Semester {s}</option>
               ))}
             </select>
+          </div>
+
+          {/* Has Math */}
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              Contains Mathematical Formulas?
+              <span className="ml-1 text-xs text-muted font-normal">(enables LaTeX rendering in generated content)</span>
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setHasMath(true)}
+                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  hasMath
+                    ? 'bg-teal text-white border-teal'
+                    : 'bg-bg border-border text-muted hover:border-teal hover:text-teal'
+                }`}
+              >
+                ✓ Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setHasMath(false)}
+                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  !hasMath
+                    ? 'bg-navy text-white border-navy'
+                    : 'bg-bg border-border text-muted hover:border-navy hover:text-navy'
+                }`}
+              >
+                ✗ No
+              </button>
+            </div>
           </div>
 
           {/* Error */}

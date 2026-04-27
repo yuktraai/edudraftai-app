@@ -10,6 +10,7 @@ const patchSchema = z.object({
   department_id: z.string().uuid().optional(),
   college_id:    z.string().uuid().optional(),
   is_active:     z.boolean().optional(),
+  has_math:      z.boolean().optional(),
 })
 
 async function getSuperAdmin() {
