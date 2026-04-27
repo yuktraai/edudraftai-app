@@ -390,14 +390,27 @@ export async function POST(request) {
       await adminSupabase
         .from('content_generations')
         .update({
-          raw_output:     fullOutput,
-          status:         'completed',
-          ai_model:       aiModel,
-          generation_ms:  ms,
-          tags:           autoTags,
-          updated_at:     new Date().toISOString(),
+          raw_output:      fullOutput,
+          status:          'completed',
+          ai_model:        aiModel,
+          generation_ms:   ms,
+          tags:            autoTags,
+          current_version: 1,
+          updated_at:      new Date().toISOString(),
         })
         .eq('id', generationId)
+
+      // ── Phase 37: Save v1 to draft_versions (non-fatal) ─────────────────
+      try {
+        await adminSupabase.from('draft_versions').insert({
+          draft_id:       generationId,
+          version_number: 1,
+          content:        fullOutput,
+          instruction:    null,
+        })
+      } catch (vErr) {
+        logger.error('[generate] draft_versions v1 insert failed', vErr.message)
+      }
 
       if (usePersonal) {
         // Deduct from personal credit ledger

@@ -6,6 +6,7 @@ import { MathContent } from '@/components/ui/MathContent'
 import { FeedbackBar } from '@/components/generation/FeedbackBar'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 import { toPlainText } from '@/lib/export/plainText'
+import { VersionHistoryDrawer } from '@/components/generation/VersionHistoryDrawer'
 
 const TYPE_META = {
   lesson_notes:  { label: 'Lesson Notes',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -91,6 +92,8 @@ export default function DraftDetailPage() {
   const [isRegenerating,     setIsRegenerating]     = useState(false)
   const [regenError,         setRegenError]         = useState(null)
   const [overflowOpen,       setOverflowOpen]       = useState(false)
+  const [showVersions,       setShowVersions]       = useState(false)
+  const [versionCount,       setVersionCount]       = useState(0)
   const overflowRef = useRef(null)
 
   useEffect(() => {
@@ -98,11 +101,13 @@ export default function DraftDetailPage() {
     Promise.all([
       fetch(`/api/drafts/${id}`).then(r => r.json()),
       fetch(`/api/feedback?generation_id=${id}`).then(r => r.json()).catch(() => ({ data: null })),
-    ]).then(([draftRes, feedbackRes]) => {
+      fetch(`/api/drafts/${id}/versions`).then(r => r.json()).catch(() => ({ versions: [] })),
+    ]).then(([draftRes, feedbackRes, versionsRes]) => {
       if (draftRes.error || !draftRes.data) setError(draftRes.error ?? 'Draft not found')
       else {
         setDraft(draftRes.data)
         setFeedback(feedbackRes.data ?? null)
+        setVersionCount(versionsRes.versions?.length ?? 0)
         if (draftRes.data.share_token && new Date(draftRes.data.share_expires_at) > new Date()) {
           setShareUrl(`${window.location.origin}/shared/${draftRes.data.share_token}`)
           setShareExpiry(draftRes.data.share_expires_at)
@@ -432,6 +437,19 @@ export default function DraftDetailPage() {
                       Download as TXT
                     </button>
 
+                    {/* Version History — only if more than 1 version */}
+                    {versionCount > 1 && (
+                      <button
+                        onClick={() => { setShowVersions(true); setOverflowOpen(false) }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-bg transition-colors text-left"
+                      >
+                        <svg className="w-4 h-4 text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Version history ({versionCount})
+                      </button>
+                    )}
+
                     {/* Share */}
                     <button
                       onClick={() => { shareUrl ? setShowShareModal(true) : handleShare(); setOverflowOpen(false) }}
@@ -630,6 +648,20 @@ export default function DraftDetailPage() {
             deleting={deleting}
           />
         )}
+
+        {/* Version History Drawer (Phase 37) */}
+        <VersionHistoryDrawer
+          draftId={id}
+          isOpen={showVersions}
+          onClose={() => setShowVersions(false)}
+          onRestored={() => {
+            setVersionCount(v => v + 1)
+            // Reload the draft content after restore
+            fetch(`/api/drafts/${id}`).then(r => r.json()).then(res => {
+              if (res.data) setDraft(res.data)
+            })
+          }}
+        />
 
         {/* Share modal */}
         {showShareModal && shareUrl && (
