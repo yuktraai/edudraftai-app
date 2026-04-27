@@ -348,6 +348,69 @@ export default function DraftsPage() {
   const [error,          setError]          = useState(null)
   const [foldersLoaded,  setFoldersLoaded]  = useState(false)
 
+  // ── Bulk select (Phase 39) ────────────────────────────────────────────────
+  const [selectMode,    setSelectMode]    = useState(false)
+  const [selectedIds,   setSelectedIds]   = useState(new Set())
+  const [zipping,       setZipping]       = useState(false)
+  const [zipError,      setZipError]      = useState(null)
+
+  function toggleSelectMode() {
+    setSelectMode(v => !v)
+    setSelectedIds(new Set())
+    setZipError(null)
+  }
+
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function selectAll() {
+    setSelectedIds(new Set(data.map(d => d.id)))
+  }
+
+  function deselectAll() {
+    setSelectedIds(new Set())
+  }
+
+  async function handleZipDownload() {
+    if (selectedIds.size === 0) return
+    setZipping(true)
+    setZipError(null)
+    try {
+      const res = await fetch('/api/drafts/bulk-export', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ draftIds: [...selectedIds], includeAnswerKey: true }),
+      })
+      if (!res.ok) {
+        const j = await res.json()
+        setZipError(j.error ?? 'Export failed')
+        return
+      }
+      const blob     = await res.blob()
+      const url      = URL.createObjectURL(blob)
+      const a        = document.createElement('a')
+      const date     = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+      a.href         = url
+      a.download     = `EduDraftAI_Export_${date}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setSelectMode(false)
+      setSelectedIds(new Set())
+    } catch (err) {
+      setZipError(err.message)
+    } finally {
+      setZipping(false)
+    }
+  }
+
   const PAGE_SIZE = 20
 
   // Debounce search query
@@ -474,15 +537,32 @@ export default function DraftsPage() {
                 {total > 0 ? `${total} generation${total !== 1 ? 's' : ''} saved` : 'Your generated content will appear here'}
               </p>
             </div>
-            <a
-              href="/generate"
-              className="flex items-center gap-2 px-4 py-2 bg-teal text-white text-sm font-semibold rounded-xl hover:bg-teal-2 transition-colors shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              New
-            </a>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Select mode toggle (Phase 39) */}
+              <button
+                onClick={toggleSelectMode}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                  selectMode
+                    ? 'bg-navy text-white border-navy'
+                    : 'bg-surface border-border text-muted hover:border-navy hover:text-navy'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {selectMode ? 'Cancel' : 'Select'}
+              </button>
+              <a
+                href="/generate"
+                className="flex items-center gap-2 px-4 py-2 bg-teal text-white text-sm font-semibold rounded-xl hover:bg-teal-2 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                New
+              </a>
+            </div>
           </div>
 
           {/* Filters row */}
@@ -568,15 +648,57 @@ export default function DraftsPage() {
             </div>
           ) : (
             <>
+              {/* Select-all / deselect-all bar (Phase 39) */}
+              {selectMode && (
+                <div className="flex items-center gap-3 py-2 px-1">
+                  <span className="text-sm text-muted">{selectedIds.size} selected</span>
+                  <button onClick={selectAll}   className="text-xs text-teal hover:underline">Select all ({data.length})</button>
+                  {selectedIds.size > 0 && <button onClick={deselectAll} className="text-xs text-muted hover:underline">Deselect all</button>}
+                  {zipError && <span className="text-xs text-error ml-auto">{zipError}</span>}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {data.map((draft) => (
-                  <DraftCardWithActions
-                    key={draft.id}
-                    draft={draft}
-                    folders={folders}
-                    folderMap={folderMap}
-                    onMoved={handleDraftMoved}
-                  />
+                  selectMode ? (
+                    // Selectable wrapper in select mode
+                    <div
+                      key={draft.id}
+                      onClick={() => toggleSelect(draft.id)}
+                      className={`relative cursor-pointer rounded-xl transition-all ${
+                        selectedIds.has(draft.id)
+                          ? 'ring-2 ring-teal ring-offset-2'
+                          : 'hover:ring-1 hover:ring-border'
+                      }`}
+                    >
+                      {/* Checkbox overlay */}
+                      <div className={`absolute top-3 left-3 z-10 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        selectedIds.has(draft.id)
+                          ? 'bg-teal border-teal'
+                          : 'bg-surface border-border'
+                      }`}>
+                        {selectedIds.has(draft.id) && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <DraftCardWithActions
+                        draft={draft}
+                        folders={folders}
+                        folderMap={folderMap}
+                        onMoved={handleDraftMoved}
+                      />
+                    </div>
+                  ) : (
+                    <DraftCardWithActions
+                      key={draft.id}
+                      draft={draft}
+                      folders={folders}
+                      folderMap={folderMap}
+                      onMoved={handleDraftMoved}
+                    />
+                  )
                 ))}
               </div>
 
@@ -606,6 +728,43 @@ export default function DraftsPage() {
           )}
         </div>
       </main>
+
+      {/* ── Bulk export sticky bottom bar (Phase 39) ─────────────────────── */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-6 py-4 bg-navy border-t border-navy-2 shadow-lg">
+          <span className="text-white text-sm font-medium">
+            {selectedIds.size} draft{selectedIds.size !== 1 ? 's' : ''} selected
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={deselectAll}
+              className="text-sm text-white/70 hover:text-white transition-colors"
+            >
+              Deselect all
+            </button>
+            <button
+              onClick={handleZipDownload}
+              disabled={zipping}
+              className="flex items-center gap-2 px-5 py-2.5 bg-teal text-white text-sm font-bold rounded-xl hover:bg-teal-2 transition-colors disabled:opacity-60"
+            >
+              {zipping ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Packaging…
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Download ZIP ({selectedIds.size} files)
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
