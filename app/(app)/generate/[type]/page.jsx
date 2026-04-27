@@ -7,6 +7,7 @@ import { TopicPicker } from '@/components/syllabus/TopicPicker'
 import { OutputViewer } from '@/components/generation/OutputViewer'
 import { Button } from '@/components/ui/Button'
 import { BulkProgressBar } from '@/components/generation/BulkProgressBar'
+import { DuplicateWarningModal } from '@/components/generation/DuplicateWarningModal'
 
 const TYPE_META = {
   lesson_notes: {
@@ -228,6 +229,9 @@ export default function GenerateTypePage() {
 
   const [regenParentId, setRegenParentId]   = useState(null)
 
+  // Duplicate generation warning (Phase 35B)
+  const [duplicateInfo, setDuplicateInfo]   = useState(null)  // { existingDraftId, generatedAt }
+
   const [bulkParentId, setBulkParentId]     = useState(null)
   const [bulkTopicCount, setBulkTopicCount] = useState(0)
   const [isBulking, setIsBulking]           = useState(false)
@@ -290,11 +294,12 @@ export default function GenerateTypePage() {
       .catch(() => {})
   }, [type])
 
-  async function handleGenerate({ regenerationInstruction, parentGenerationId } = {}) {
+  async function handleGenerate({ regenerationInstruction, parentGenerationId, force = false } = {}) {
     if (!topic?.subject_id) return
     setError(null)
     setOutput('')
     setGenerationId(null)
+    setDuplicateInfo(null)
     setIsStreaming(true)
 
     const body = {
@@ -316,12 +321,23 @@ export default function GenerateTypePage() {
     try {
       const res = await fetch('/api/generate', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(force ? { 'x-force-generate': 'true' } : {}),
+        },
         body:    JSON.stringify(body),
       })
 
       if (!res.ok) {
         const j = await res.json()
+
+        // 409 = duplicate within 30 days — show warning modal
+        if (res.status === 409 && j.duplicate) {
+          setDuplicateInfo({ existingDraftId: j.existingDraftId, generatedAt: j.generatedAt })
+          setIsStreaming(false)
+          return
+        }
+
         setError(j.error ?? `Error ${res.status}`)
         setIsStreaming(false)
         return
@@ -418,6 +434,18 @@ export default function GenerateTypePage() {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl space-y-6 pb-28 md:pb-6">
+
+      {/* Duplicate generation warning modal (Phase 35B) */}
+      {duplicateInfo && (
+        <DuplicateWarningModal
+          contentType={type}
+          existingDraftId={duplicateInfo.existingDraftId}
+          generatedAt={duplicateInfo.generatedAt}
+          onForce={() => handleGenerate({ force: true })}
+          onClose={() => setDuplicateInfo(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

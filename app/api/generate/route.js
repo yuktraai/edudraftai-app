@@ -185,6 +185,33 @@ export async function POST(request) {
     return Response.json({ error: noCreditsMsg, code: 'NO_CREDITS' }, { status: 402 })
   }
 
+  // ── 6c. Duplicate generation check (Phase 35B) ────────────────────────────
+  // Skip if: force header present, or this is a regeneration, or no chunk selected
+  const forceGenerate = request.headers.get('x-force-generate') === 'true'
+  const isRegenerationFlow = !!(parent_generation_id && regeneration_instruction)
+
+  if (!forceGenerate && !isRegenerationFlow && chunk_id) {
+    const { data: recentGen } = await adminSupabase
+      .from('content_generations')
+      .select('id, created_at')
+      .eq('user_id', user.id)
+      .eq('subject_id', subject_id)
+      .eq('chunk_id', chunk_id)
+      .eq('content_type', content_type)
+      .eq('status', 'completed')
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (recentGen) {
+      return Response.json(
+        { duplicate: true, existingDraftId: recentGen.id, generatedAt: recentGen.created_at },
+        { status: 409 }
+      )
+    }
+  }
+
   // ── 7. Build prompt params (merge chunk context + user params) ────────────
   // Phase 10C: TopicPicker now emits multi-selected subtopics as an array.
   // params.subtopics = the user's selection (1–5 items).
