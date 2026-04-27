@@ -33,14 +33,16 @@ export async function POST(request) {
 
     if (expectedSignature !== razorpay_signature) {
       // Log tamper attempt
-      await adminSupabase.rpc('write_system_log', {
-        p_college_id: profile.college_id,
-        p_user_id:    user.id,
-        p_event_type: 'api_error',
-        p_severity:   'error',
-        p_message:    'Razorpay signature verification failed — possible tampered request',
-        p_metadata:   { order_id: razorpay_order_id },
-      }).catch(() => {})
+      try {
+        await adminSupabase.rpc('write_system_log', {
+          p_college_id: profile.college_id,
+          p_user_id:    user.id,
+          p_event_type: 'api_error',
+          p_severity:   'error',
+          p_message:    'Razorpay signature verification failed — possible tampered request',
+          p_metadata:   { order_id: razorpay_order_id },
+        })
+      } catch {}
 
       return Response.json({ error: 'Payment verification failed', code: 'INVALID_SIGNATURE' }, { status: 400 })
     }
@@ -81,31 +83,35 @@ export async function POST(request) {
 
     if (rpcErr) {
       logger.error('[verify] apply_purchase_credits failed', rpcErr)
-      await adminSupabase.rpc('write_system_log', {
-        p_college_id: purchase.college_id,
-        p_user_id:    user.id,
-        p_event_type: 'credit_error',
-        p_severity:   'error',
-        p_message:    `Failed to apply credits after payment: ${rpcErr.message}`,
-        p_metadata:   { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
-      }).catch(() => {})
+      try {
+        await adminSupabase.rpc('write_system_log', {
+          p_college_id: purchase.college_id,
+          p_user_id:    user.id,
+          p_event_type: 'credit_error',
+          p_severity:   'error',
+          p_message:    `Failed to apply credits after payment: ${rpcErr.message}`,
+          p_metadata:   { order_id: razorpay_order_id, payment_id: razorpay_payment_id },
+        })
+      } catch {}
       return Response.json({ error: 'Credits could not be applied. Contact support.' }, { status: 500 })
     }
 
     // ── 4. Write success system log ───────────────────────────────────────────
-    await adminSupabase.rpc('write_system_log', {
-      p_college_id: purchase.college_id,
-      p_user_id:    user.id,
-      p_event_type: 'admin_action',
-      p_severity:   'info',
-      p_message:    `Credit purchase confirmed: ${purchase.credits_to_award} credits added to pool`,
-      p_metadata: {
-        order_id:     razorpay_order_id,
-        payment_id:   razorpay_payment_id,
-        credits:      purchase.credits_to_award,
-        amount_paise: purchase.amount_paise,
-      },
-    }).catch(() => {})
+    try {
+      await adminSupabase.rpc('write_system_log', {
+        p_college_id: purchase.college_id,
+        p_user_id:    user.id,
+        p_event_type: 'admin_action',
+        p_severity:   'info',
+        p_message:    `Credit purchase confirmed: ${purchase.credits_to_award} credits added to pool`,
+        p_metadata: {
+          order_id:     razorpay_order_id,
+          payment_id:   razorpay_payment_id,
+          credits:      purchase.credits_to_award,
+          amount_paise: purchase.amount_paise,
+        },
+      })
+    } catch {}
 
     // ── 5. Generate and send GST invoice (non-fatal) ──────────────────────────
     try {
