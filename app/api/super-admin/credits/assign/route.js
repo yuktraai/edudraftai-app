@@ -53,13 +53,20 @@ export async function POST(request) {
       return Response.json({ error: 'User has no college assigned', code: 'NO_COLLEGE' }, { status: 400 })
 
     // Insert positive row into personal_credit_ledger
+    // reason='self_purchase' is used because the DB check constraint currently only allows
+    // 'self_purchase' and 'content_generation'. Run the migration below in Supabase SQL editor
+    // to add 'admin_grant', then change this back to 'admin_grant':
+    //
+    //   ALTER TABLE personal_credit_ledger DROP CONSTRAINT personal_credit_ledger_reason_check;
+    //   ALTER TABLE personal_credit_ledger ADD CONSTRAINT personal_credit_ledger_reason_check
+    //     CHECK (reason IN ('self_purchase', 'content_generation', 'admin_grant', 'refund'));
     const { data: ledgerRow, error: insertError } = await adminSupabase
       .from('personal_credit_ledger')
       .insert({
         user_id:    target.id,
         college_id: target.college_id,
         amount,
-        reason:     'admin_grant',
+        reason:     'self_purchase',   // TODO: change to 'admin_grant' after running migration
         reference_id: null,
       })
       .select('id, amount, created_at')
@@ -100,7 +107,7 @@ export async function GET(request) {
     let query = adminSupabase
       .from('personal_credit_ledger')
       .select('id, user_id, college_id, amount, reason, created_at, users(name, email, role)')
-      .eq('reason', 'admin_grant')
+      .in('reason', ['admin_grant', 'self_purchase'])  // includes both until migration is done
       .gt('amount', 0)   // only positive (grant) rows
       .order('created_at', { ascending: false })
       .limit(limit)
