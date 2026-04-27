@@ -224,7 +224,9 @@ export default function GenerateTypePage() {
   const [output, setOutput]         = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError]           = useState(null)
-  const [balance, setBalance]       = useState(null)
+  const [balance, setBalance]             = useState(null)
+  const [effectiveBalance, setEffectiveBalance] = useState(null)
+  const [demoCreditsRemaining, setDemoCreditsRemaining] = useState(0)
   const [generationId, setGenerationId] = useState(null)
 
   const [regenParentId, setRegenParentId]   = useState(null)
@@ -251,8 +253,12 @@ export default function GenerateTypePage() {
   useEffect(() => {
     fetch('/api/credits/balance')
       .then(r => r.json())
-      .then(({ balance }) => setBalance(balance ?? 0))
-      .catch(() => setBalance(0))
+      .then((data) => {
+        setBalance(data.balance ?? 0)
+        setEffectiveBalance(data.effectiveBalance ?? data.balance ?? 0)
+        setDemoCreditsRemaining(data.demoCreditsRemaining ?? 0)
+      })
+      .catch(() => { setBalance(0); setEffectiveBalance(0); setDemoCreditsRemaining(0) })
   }, [output]) // re-fetch after each generation
 
   // Apply user preference defaults to form on first load
@@ -430,7 +436,7 @@ export default function GenerateTypePage() {
 
   if (!meta) return null
 
-  const canGenerate = topic?.subject_id && !isStreaming && (balance ?? 0) > 0
+  const canGenerate = topic?.subject_id && !isStreaming && (effectiveBalance ?? 0) > 0
 
   return (
     <div className="p-4 md:p-8 max-w-4xl space-y-6 pb-28 md:pb-6">
@@ -460,13 +466,16 @@ export default function GenerateTypePage() {
           <h1 className="font-heading text-xl md:text-2xl font-bold text-navy">{meta.title}</h1>
           <p className="text-muted text-sm">{meta.description}</p>
         </div>
-        {balance !== null && (
+        {effectiveBalance !== null && (
           <div className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold shrink-0 ${
-            balance > 0
+            effectiveBalance > 0
               ? 'bg-teal-light border-teal text-teal'
               : 'bg-red-50 border-red-200 text-error'
           }`}>
-            {balance} credit{balance !== 1 ? 's' : ''}
+            {demoCreditsRemaining > 0 && balance === 0
+              ? `${demoCreditsRemaining} demo credit${demoCreditsRemaining !== 1 ? 's' : ''}`
+              : `${balance} credit${balance !== 1 ? 's' : ''}`
+            }
           </div>
         )}
       </div>
@@ -518,7 +527,7 @@ export default function GenerateTypePage() {
 
         {/* Generate button — desktop inline version (hidden on mobile) */}
         <div className="pt-1 hidden md:block">
-          {balance === 0 ? (
+          {effectiveBalance === 0 ? (
             <div className="flex items-center gap-2 text-sm text-error bg-red-50 border border-red-200 rounded-lg px-4 py-3">
               <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -526,16 +535,23 @@ export default function GenerateTypePage() {
               Out of credits — contact your college admin to request more.
             </div>
           ) : (
-            <Button
-              onClick={handleGenerate}
-              loading={isStreaming}
-              disabled={!canGenerate}
-              className="w-full sm:w-auto px-8"
-            >
-              {isStreaming ? 'Generating…' : 'Generate  (1 credit)'}
-            </Button>
+            <>
+              <Button
+                onClick={handleGenerate}
+                loading={isStreaming}
+                disabled={!canGenerate}
+                className="w-full sm:w-auto px-8"
+              >
+                {isStreaming ? 'Generating…' : 'Generate  (1 credit)'}
+              </Button>
+              {demoCreditsRemaining > 0 && balance === 0 && (
+                <p className="text-xs text-muted mt-2">
+                  You have <span className="font-semibold text-teal">{demoCreditsRemaining} free demo generation{demoCreditsRemaining !== 1 ? 's' : ''}</span> remaining.
+                </p>
+              )}
+            </>
           )}
-          {!topic?.subject_id && balance > 0 && (
+          {!topic?.subject_id && effectiveBalance > 0 && (
             <p className="text-xs text-muted mt-2">Select a topic above to enable generation.</p>
           )}
 
@@ -544,7 +560,7 @@ export default function GenerateTypePage() {
             <button
               type="button"
               onClick={handleBulkGenerate}
-              disabled={isBulking || (balance ?? 0) === 0}
+              disabled={isBulking || (effectiveBalance ?? 0) === 0}
               className="flex items-center gap-2 text-sm font-medium text-navy border border-navy/20 rounded-xl px-4 py-2.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 mt-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -639,7 +655,7 @@ export default function GenerateTypePage() {
 
       {/* Mobile sticky Generate button — visible only on small screens */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-3 bg-bg/95 backdrop-blur border-t border-border">
-        {balance === 0 ? (
+        {effectiveBalance === 0 ? (
           <div className="flex items-center gap-2 text-sm text-error bg-red-50 border border-red-200 rounded-lg px-4 py-3">
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -647,19 +663,26 @@ export default function GenerateTypePage() {
             Out of credits — contact your college admin.
           </div>
         ) : (
-          <button
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            className={`w-full py-3.5 rounded-xl text-sm font-semibold min-h-[48px] transition-opacity ${
-              canGenerate
-                ? 'bg-teal text-white hover:opacity-90'
-                : 'bg-teal/40 text-white cursor-not-allowed'
-            }`}
-          >
-            {isStreaming ? 'Generating…' : 'Generate  (1 credit)'}
-          </button>
+          <>
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className={`w-full py-3.5 rounded-xl text-sm font-semibold min-h-[48px] transition-opacity ${
+                canGenerate
+                  ? 'bg-teal text-white hover:opacity-90'
+                  : 'bg-teal/40 text-white cursor-not-allowed'
+              }`}
+            >
+              {isStreaming ? 'Generating…' : 'Generate  (1 credit)'}
+            </button>
+            {demoCreditsRemaining > 0 && balance === 0 && (
+              <p className="text-xs text-muted text-center mt-1.5">
+                {demoCreditsRemaining} free demo generation{demoCreditsRemaining !== 1 ? 's' : ''} remaining
+              </p>
+            )}
+          </>
         )}
-        {!topic?.subject_id && balance > 0 && (
+        {!topic?.subject_id && effectiveBalance > 0 && (
           <p className="text-xs text-muted text-center mt-1.5">Select a topic above to enable generation.</p>
         )}
       </div>
