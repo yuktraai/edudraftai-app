@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 
-export const metadata = { title: 'Departments — Super Admin — EduDraftAI' }
-
 const inputCls =
   'w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm ' +
   'placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent'
