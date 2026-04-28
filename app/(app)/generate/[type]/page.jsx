@@ -244,6 +244,9 @@ export default function GenerateTypePage() {
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [templateMsg, setTemplateMsg]       = useState(null)
 
+  // Phase 43 — AI difficulty calibration hint
+  const [calibrationHint, setCalibrationHint] = useState(null) // { suggested, confidence }
+
   // Redirect if invalid type
   useEffect(() => {
     if (!meta) router.replace('/generate')
@@ -297,6 +300,18 @@ export default function GenerateTypePage() {
     fetch(`/api/templates?content_type=${type}`)
       .then(r => r.json())
       .then(({ templates }) => setTemplates(templates ?? []))
+      .catch(() => {})
+  }, [type])
+
+  // Phase 43 — fetch calibration hint for content types with difficulty
+  useEffect(() => {
+    const hasDifficulty = ['lesson_notes', 'mcq_bank'].includes(type)
+    if (!hasDifficulty) return
+    fetch(`/api/calibration?content_type=${type}`)
+      .then(r => r.json())
+      .then((data) => {
+        if (data.confidence !== 'low') setCalibrationHint(data)
+      })
       .catch(() => {})
   }, [type])
 
@@ -523,6 +538,38 @@ export default function GenerateTypePage() {
           {type === 'question_bank' && <QuestionBankParams params={params} onChange={setParams} />}
           {type === 'test_plan'     && <TestPlanParams     params={params} onChange={setParams} />}
           {type === 'exam_paper'    && <ExamPaperParams    params={params} onChange={setParams} />}
+
+          {/* Phase 43 — AI difficulty calibration nudge */}
+          {calibrationHint && params.difficulty && calibrationHint.suggested !== params.difficulty && (
+            <div className="flex items-start gap-2.5 mt-3 px-3 py-2.5 rounded-lg bg-teal/5 border border-teal/20">
+              <svg className="w-4 h-4 text-teal shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-teal">AI Tip</p>
+                <p className="text-xs text-muted mt-0.5">
+                  Based on your past ratings, <span className="font-medium text-text capitalize">{calibrationHint.suggested}</span> difficulty tends to work better for you.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setParams(p => ({ ...p, difficulty: calibrationHint.suggested }))}
+                    className="underline text-teal hover:text-teal-2 transition-colors"
+                  >
+                    Apply suggestion
+                  </button>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCalibrationHint(null)}
+                className="text-muted hover:text-text transition-colors shrink-0"
+                aria-label="Dismiss"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Generate button — desktop inline version (hidden on mobile) */}

@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { TemplateManager } from '@/components/profile/TemplateManager'
 import { GenerationDefaults } from '@/components/profile/GenerationDefaults'
 import { NotificationPreferences } from '@/components/profile/NotificationPreferences'
+import { ReferralSection } from '@/components/profile/ReferralSection'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +58,21 @@ export default async function ProfilePage() {
       <div className="bg-surface border border-border rounded-xl p-6">
         <NotificationPreferences initialPreferences={profile?.preferences ?? {}} />
       </div>
+
+      {/* Phase 46 — Appearance */}
+      <div className="bg-surface border border-border rounded-2xl p-6">
+        <h2 className="font-semibold text-text text-base mb-4">Appearance</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-text">Dark Mode</p>
+            <p className="text-xs text-muted mt-0.5">Switch between light and dark interface.</p>
+          </div>
+          <ThemeToggle />
+        </div>
+      </div>
+
+      {/* Phase 44 — Referral Program */}
+      <ReferralSection />
     </div>
   )
 }

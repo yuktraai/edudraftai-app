@@ -17,6 +17,7 @@ const NAV_LINKS = {
     { label: 'Logs',             href: '/super-admin/logs' },
     { label: 'Waitlist',         href: '/super-admin/waitlist' },
     { label: 'Support Tickets',  href: '/super-admin/tickets' },
+    { label: "What's New",       href: '/super-admin/changelog', alertKey: 'changelog' },
   ],
   college_admin: [
     { label: 'Dashboard',    href: '/admin/dashboard' },
@@ -28,6 +29,7 @@ const NAV_LINKS = {
     { label: 'Syllabus',     href: '/syllabus' },
     { label: 'Credits',      href: '/admin/credits' },
     { label: 'Buy Credits',  href: '/admin/credits/buy' },
+    { label: "What's New",   href: '/whats-new',        alertKey: 'changelog' },
     { label: 'My Tickets',   href: '/help/tickets' },
     { label: 'Profile',      href: '/profile' },
   ],
@@ -36,7 +38,9 @@ const NAV_LINKS = {
     { label: 'Generate',    href: '/generate' },
     { label: 'My Drafts',   href: '/drafts' },
     { label: 'Syllabus',    href: '/syllabus' },
+    { label: 'Library',     href: '/library' },
     { label: 'Buy Credits', href: '/credits/buy' },
+    { label: "What's New",  href: '/whats-new',       alertKey: 'changelog' },
     { label: 'My Tickets',  href: '/help/tickets' },
     { label: 'Profile',     href: '/profile' },
   ],
@@ -149,6 +153,15 @@ export function Sidebar({ role, name, creditBalance, personalCreditBalance, demo
   const pathname = usePathname()
   const links    = NAV_LINKS[role] ?? NAV_LINKS.lecturer
 
+  // Unread changelog count — fetched once on mount, re-zeroed when user visits the page
+  const [changelogUnread, setChangelogUnread] = useState(0)
+  useEffect(() => {
+    fetch('/api/changelog')
+      .then(r => r.json())
+      .then(({ unreadCount }) => setChangelogUnread(unreadCount ?? 0))
+      .catch(() => {})
+  }, [pathname])   // re-check after navigation (visiting the page marks as read)
+
   return (
     <aside className="w-64 shrink-0 bg-navy flex flex-col h-full">
       {/* Logo + optional mobile close button */}
@@ -226,7 +239,8 @@ export function Sidebar({ role, name, creditBalance, personalCreditBalance, demo
             (href !== '/dashboard' && href !== '/generate' && pathname.startsWith(href))
 
           // Show alert dot on "Lecturers" when any lecturer is at 0 credits
-          const showAlert = alertKey === 'zeroCredits' && hasZeroBalanceLecturers
+          const showZeroAlert     = alertKey === 'zeroCredits' && hasZeroBalanceLecturers
+          const showChangelogBadge = alertKey === 'changelog' && changelogUnread > 0
 
           return (
             <Link
@@ -245,11 +259,16 @@ export function Sidebar({ role, name, creditBalance, personalCreditBalance, demo
               }`}
             >
               <span className="flex-1">{label}</span>
-              {showAlert && (
+              {showZeroAlert && (
                 <span
                   className="inline-block w-2 h-2 rounded-full bg-error shrink-0"
                   title="One or more lecturers are out of credits"
                 />
+              )}
+              {showChangelogBadge && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-teal text-white text-[10px] font-bold shrink-0">
+                  {changelogUnread}
+                </span>
               )}
             </Link>
           )

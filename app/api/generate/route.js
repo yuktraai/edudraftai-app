@@ -9,6 +9,7 @@ import { buildQuestionBankPrompt } from '@/lib/ai/prompts/question-bank'
 import { buildTestPlanPrompt } from '@/lib/ai/prompts/test-plan'
 import { buildExamPaperPrompt } from '@/lib/ai/prompts/exam-paper'
 import { buildRegenerationPrompt } from '@/lib/ai/prompts/regenerate'
+import { maybeRewardReferral } from '@/lib/referral'
 import { embedText } from '@/lib/rag/embedder'
 import { queryContext } from '@/lib/rag/pinecone'
 import OpenAI from 'openai'
@@ -473,6 +474,9 @@ export async function POST(request) {
           .update({ demo_credits_used: demoCreditsUsed + 1 })
           .eq('id', user.id)
       }
+
+      // Phase 44 — maybe reward referral (fire-and-forget, non-fatal)
+      maybeRewardReferral(user.id).catch(() => {})
 
     } catch (err) {
       failed = true
