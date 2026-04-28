@@ -6,6 +6,7 @@ import { Sidebar }             from './Sidebar'
 import { CreditWarning }       from '@/components/ui/CreditWarning'
 import { OnboardingTour }      from '@/components/onboarding/OnboardingTour'
 import { NotificationBell }    from './NotificationBell'
+import { HelpButton }          from '@/components/support/HelpButton'
 
 /**
  * AppShell — wraps the app layout with a responsive sidebar.
@@ -115,6 +116,9 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, dem
       {!onboardingCompleted && role === 'lecturer' && (
         <OnboardingTour userId={userId} />
       )}
+
+      {/* Floating help button — all roles */}
+      <HelpButton />
     </div>
   )
 }

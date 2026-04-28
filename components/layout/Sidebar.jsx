@@ -16,6 +16,7 @@ const NAV_LINKS = {
     { label: 'Webinars',         href: '/super-admin/webinars' },
     { label: 'Logs',             href: '/super-admin/logs' },
     { label: 'Waitlist',         href: '/super-admin/waitlist' },
+    { label: 'Support Tickets',  href: '/super-admin/tickets' },
   ],
   college_admin: [
     { label: 'Dashboard',    href: '/admin/dashboard' },
@@ -27,6 +28,7 @@ const NAV_LINKS = {
     { label: 'Syllabus',     href: '/syllabus' },
     { label: 'Credits',      href: '/admin/credits' },
     { label: 'Buy Credits',  href: '/admin/credits/buy' },
+    { label: 'My Tickets',   href: '/help/tickets' },
     { label: 'Profile',      href: '/profile' },
   ],
   lecturer: [
@@ -35,6 +37,7 @@ const NAV_LINKS = {
     { label: 'My Drafts',   href: '/drafts' },
     { label: 'Syllabus',    href: '/syllabus' },
     { label: 'Buy Credits', href: '/credits/buy' },
+    { label: 'My Tickets',  href: '/help/tickets' },
     { label: 'Profile',     href: '/profile' },
   ],
 }
