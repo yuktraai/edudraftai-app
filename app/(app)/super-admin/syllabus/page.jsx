@@ -40,7 +40,24 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
 
   if (profile?.role !== 'super_admin') redirect('/dashboard')
 
+  // Extract active filters from searchParams early — needed to scope the departments query
+  const activeCollegeId  = searchParams?.college_id  ?? ''
+  const activeDeptId     = searchParams?.dept_id     ?? ''
+  const activeSemester   = searchParams?.semester    ?? ''
+  const activeSubjectIds = (searchParams?.subject_ids ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
   // Run separate queries — nested joins with syllabus_files/chunks are unreliable
+  // Departments are scoped to the selected college so the dropdown stays accurate
+  const deptQuery = adminSupabase
+    .from('departments')
+    .select('id, name, college_id')
+    .eq('is_active', true)
+    .order('name')
+  if (activeCollegeId) deptQuery.eq('college_id', activeCollegeId)
+
   const [
     { data: subjects },
     { data: colleges },
@@ -59,9 +76,7 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
       .select('id, name')
       .eq('is_active', true),
 
-    adminSupabase
-      .from('departments')
-      .select('id, name'),
+    deptQuery,
 
     // latest file per subject — ordered by created_at desc
     adminSupabase
@@ -73,15 +88,6 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
       .from('syllabus_chunks')
       .select('id, subject_id'),
   ])
-
-  // Extract active filters from searchParams
-  const activeCollegeId  = searchParams?.college_id  ?? ''
-  const activeDeptId     = searchParams?.dept_id     ?? ''
-  const activeSemester   = searchParams?.semester    ?? ''
-  const activeSubjectIds = (searchParams?.subject_ids ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
 
   // Build lookup maps
   const collegeMap = Object.fromEntries((colleges ?? []).map(c => [c.id, c]))
@@ -109,18 +115,10 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
   })
   const filteredTotal = filteredSubjects.length
 
-  // Build deduplicated filter option lists from ALL subjects (unfiltered)
+  // allDepts comes directly from the departments table (scoped to college if selected)
+  // — avoids cross-college leakage and shows depts even if they have no subjects yet
   const allColleges = (colleges ?? []).slice().sort((a, b) => a.name.localeCompare(b.name))
-  const seenDepts = new Set()
-  const allDepts = []
-  for (const s of subjects ?? []) {
-    const dept = deptMap[s.department_id]
-    if (dept && !seenDepts.has(dept.id)) {
-      seenDepts.add(dept.id)
-      allDepts.push(dept)
-    }
-  }
-  allDepts.sort((a, b) => a.name.localeCompare(b.name))
+  const allDepts    = (departments ?? []).slice() // already ordered by name from query
 
   // Group filtered subjects by college
   const grouped = {}
