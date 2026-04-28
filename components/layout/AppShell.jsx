@@ -17,6 +17,9 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, dem
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
+  // Effective balance = pool + personal + demo (what the user can actually use)
+  const effectiveBalance = (creditBalance ?? 0) + (personalCreditBalance ?? 0) + demoCreditsRemaining
+
   // Close drawer on route change
   useEffect(() => { setOpen(false) }, [pathname])
 
@@ -87,11 +90,11 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, dem
             <NotificationBell />
             {creditBalance !== null && (
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                (creditBalance > 0 || demoCreditsRemaining > 0) ? 'bg-teal text-white' : 'bg-error text-white'
+                effectiveBalance > 0 ? 'bg-teal text-white' : 'bg-error text-white'
               }`}>
-                {demoCreditsRemaining > 0 && creditBalance === 0
+                {demoCreditsRemaining > 0 && creditBalance === 0 && (personalCreditBalance ?? 0) === 0
                   ? `${demoCreditsRemaining} demo`
-                  : `${creditBalance} credits`
+                  : `${(creditBalance ?? 0) + (personalCreditBalance ?? 0)} credits`
                 }
               </span>
             )}
@@ -105,8 +108,8 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, dem
 
         <main className="flex-1 overflow-y-auto">
           {/* Credit warning banner — shown for lecturer/college_admin when balance ≤ 20 and no demo credits available */}
-          {creditBalance !== null && creditBalance <= 20 && demoCreditsRemaining === 0 && (
-            <CreditWarning balance={creditBalance} role={role} />
+          {creditBalance !== null && effectiveBalance <= 20 && (
+            <CreditWarning balance={effectiveBalance} role={role} />
           )}
           {children}
         </main>

@@ -17,9 +17,10 @@ export function CreditWarning({ balance, role }) {
   const bg     = isZero ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300'
   const icon   = isZero ? 'text-error' : 'text-warning'
   const text   = isZero ? 'text-error' : 'text-amber-700'
+  // balance here is effectiveBalance (pool + personal + demo)
   const label  = isZero
-    ? 'No credits remaining — content generation is disabled. Contact your college admin.'
-    : `Only ${balance} credit${balance === 1 ? '' : 's'} remaining. Generate soon or ask your admin for more.`
+    ? 'No credits remaining — content generation is disabled. Buy credits or contact your admin.'
+    : `Only ${balance} credit${balance === 1 ? '' : 's'} remaining. Top up soon to keep generating.`
 
   function handleDismiss() {
     if (typeof window !== 'undefined') {

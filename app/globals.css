@@ -30,6 +30,60 @@
   --teal-light: #0D2B28;
 }
 
+/* ── Dark mode: fix text-navy / text-navy-2 (hardcoded dark → visible) ────── */
+/* The sidebar uses bg-navy and stays dark intentionally; only text-navy        */
+/* on content pages needs to flip to light.                                     */
+[data-theme="dark"] .text-navy   { color: #CBD5E0; }
+[data-theme="dark"] .text-navy-2 { color: #A0AEC0; }
+
+/* ── Dark mode: Tailwind colour utilities used in content cards / banners ──── */
+
+/* Backgrounds — light pastels become dark tinted surfaces */
+[data-theme="dark"] .bg-red-50     { background-color: rgba(220,  38,  38, 0.12); }
+[data-theme="dark"] .bg-amber-50   { background-color: rgba(217, 119,   6, 0.12); }
+[data-theme="dark"] .bg-yellow-50  { background-color: rgba(234, 179,   8, 0.10); }
+[data-theme="dark"] .bg-blue-50    { background-color: rgba( 59, 130, 246, 0.12); }
+[data-theme="dark"] .bg-purple-50  { background-color: rgba(139,  92, 246, 0.12); }
+[data-theme="dark"] .bg-indigo-50  { background-color: rgba( 99, 102, 241, 0.12); }
+[data-theme="dark"] .bg-green-50   { background-color: rgba(  5, 150, 105, 0.12); }
+[data-theme="dark"] .bg-pink-50    { background-color: rgba(236,  72, 153, 0.10); }
+[data-theme="dark"] .bg-white      { background-color: var(--surface); }
+
+/* Borders */
+[data-theme="dark"] .border-red-200,
+[data-theme="dark"] .border-red-300    { border-color: rgba(252, 165, 165, 0.25); }
+[data-theme="dark"] .border-amber-200,
+[data-theme="dark"] .border-amber-300  { border-color: rgba(252, 211,  77, 0.25); }
+[data-theme="dark"] .border-blue-200   { border-color: rgba(147, 197, 253, 0.25); }
+[data-theme="dark"] .border-purple-200 { border-color: rgba(196, 181, 253, 0.25); }
+[data-theme="dark"] .border-indigo-200 { border-color: rgba(165, 180, 252, 0.25); }
+[data-theme="dark"] .border-green-200  { border-color: rgba(110, 231, 183, 0.25); }
+
+/* Text — dark coloured text → light pastel equivalent */
+[data-theme="dark"] .text-blue-700   { color: #93C5FD; }
+[data-theme="dark"] .text-purple-700 { color: #C4B5FD; }
+[data-theme="dark"] .text-amber-700  { color: #FCD34D; }
+[data-theme="dark"] .text-amber-800  { color: #FCD34D; }
+[data-theme="dark"] .text-indigo-700 { color: #A5B4FC; }
+[data-theme="dark"] .text-green-700  { color: #6EE7B7; }
+[data-theme="dark"] .text-red-700    { color: #FCA5A5; }
+[data-theme="dark"] .text-pink-700   { color: #F9A8D4; }
+[data-theme="dark"] .text-slate-700  { color: #CBD5E0; }
+[data-theme="dark"] .text-slate-600  { color: #A0AEC0; }
+[data-theme="dark"] .text-slate-500  { color: #8892A4; }
+[data-theme="dark"] .text-gray-700   { color: #CBD5E0; }
+[data-theme="dark"] .text-gray-600   { color: #A0AEC0; }
+
+/* Warning / error banners that use red-50 bg + red text */
+[data-theme="dark"] .text-error  { color: #FC8181; }
+
+/* ── Dark mode: form inputs & selects ──────────────────────────────────────── */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  color-scheme: dark;
+}
+
 body {
   color: var(--text);
   background: var(--bg);

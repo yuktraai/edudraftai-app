@@ -40,7 +40,7 @@ export default async function DashboardPage() {
   if (profile?.role === 'college_admin') redirect('/admin/dashboard')
 
   // Fetch all stats in parallel
-  const [genRes, balanceRes, recentRes] = await Promise.all([
+  const [genRes, balanceRes, personalRes, userRes, recentRes] = await Promise.all([
     // All completed generations for this lecturer
     adminSupabase
       .from('content_generations')
@@ -49,8 +49,21 @@ export default async function DashboardPage() {
       .eq('status', 'completed')
       .order('created_at', { ascending: false }),
 
-    // Credit balance
+    // Pool credit balance
     adminSupabase.rpc('get_credit_balance', { p_user_id: user.id }),
+
+    // Personal credit balance
+    adminSupabase
+      .from('personal_credit_ledger')
+      .select('amount')
+      .eq('user_id', user.id),
+
+    // For demo credits calculation
+    adminSupabase
+      .from('users')
+      .select('demo_credits_used')
+      .eq('id', user.id)
+      .single(),
 
     // Recent 6 drafts with subject name
     adminSupabase
@@ -62,9 +75,26 @@ export default async function DashboardPage() {
       .limit(6),
   ])
 
-  const allGens       = genRes.data ?? []
-  const creditBalance = balanceRes.data ?? 0
-  const recentDrafts  = recentRes.data ?? []
+  const allGens        = genRes.data ?? []
+  const poolBalance    = balanceRes.data ?? 0
+  const personalBalance = (personalRes.data ?? []).reduce((s, r) => s + r.amount, 0)
+  const recentDrafts   = recentRes.data ?? []
+
+  // Demo credits remaining (same logic as AppShell / generate page)
+  let demoCreditsRemaining = 0
+  const demoUsed = userRes.data?.demo_credits_used ?? 0
+  if (demoUsed < 3 && poolBalance === 0 && personalBalance === 0) {
+    const { data: adminCredits } = await adminSupabase
+      .from('credit_ledger').select('id')
+      .eq('user_id', user.id)
+      .in('reason', ['admin_grant', 'monthly_allocation', 'refund'])
+      .limit(1)
+    if ((adminCredits?.length ?? 0) === 0) demoCreditsRemaining = 3 - demoUsed
+  }
+
+  // Effective balance = everything the user can actually generate with
+  const creditBalance    = poolBalance + personalBalance
+  const effectiveBalance = creditBalance + demoCreditsRemaining
 
   // Compute stats
   const totalGenerated  = allGens.length
@@ -136,8 +166,8 @@ export default async function DashboardPage() {
 
         {/* Credits Remaining */}
         <div className={`border rounded-xl p-5 ${
-          creditBalance <= 0  ? 'bg-red-50 border-red-200'  :
-          creditBalance <= 5  ? 'bg-amber-50 border-amber-200' :
+          effectiveBalance <= 0  ? 'bg-red-50 border-red-200'  :
+          effectiveBalance <= 5  ? 'bg-amber-50 border-amber-200' :
           'bg-teal-light border-teal/30'
         }`}>
           <div className="flex items-center justify-between mb-3">
@@ -145,13 +175,15 @@ export default async function DashboardPage() {
             <div className="w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center text-base">⚡</div>
           </div>
           <p className={`text-3xl font-bold ${
-            creditBalance <= 0  ? 'text-error'   :
-            creditBalance <= 5  ? 'text-warning'  :
+            effectiveBalance <= 0  ? 'text-error'   :
+            effectiveBalance <= 5  ? 'text-warning'  :
             'text-teal'
-          }`}>{creditBalance}</p>
+          }`}>{effectiveBalance}</p>
           <p className="text-xs text-muted mt-1">
-            {creditBalance <= 0 ? 'Contact admin to top up' :
-             creditBalance <= 5 ? 'Running low' : 'Available to use'}
+            {effectiveBalance <= 0 ? 'Contact admin to top up' :
+             demoCreditsRemaining > 0 && creditBalance === 0 ? `${demoCreditsRemaining} demo · ${personalBalance} personal` :
+             personalBalance > 0 && poolBalance === 0 ? `${personalBalance} personal` :
+             effectiveBalance <= 5 ? 'Running low' : 'Available to use'}
           </p>
         </div>
 
