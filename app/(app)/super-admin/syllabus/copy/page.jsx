@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -10,15 +10,17 @@ const selectCls =
   'focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed'
 
 /**
- * Derive unique departments from a list of subjects returned by
- * /api/super-admin/subjects (which includes departments(name) joined field).
+ * Derive unique departments from a flat subject list.
+ * Accepts subjects with { department_id, dept_name } fields.
  * Returns [{ id, name }] sorted by name.
  */
 function deriveDeptsFromSubjects(subjects) {
   const map = {}
   for (const s of subjects) {
-    if (s.department_id && s.dept_name && !map[s.department_id]) {
-      map[s.department_id] = { id: s.department_id, name: s.dept_name }
+    const deptId = s.department_id
+    const deptName = s.dept_name
+    if (deptId && deptName && deptName !== '—' && !map[deptId]) {
+      map[deptId] = { id: deptId, name: deptName }
     }
   }
   return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
@@ -167,14 +169,8 @@ export default function CopySyllabusPage() {
     setSelectedSourceId('')
     fetch(`/api/super-admin/subjects?college_id=${srcCollegeId}`)
       .then((r) => r.json())
-      .then(({ data }) => {
-        // API returns deduplicated subject list; we need per-row so expand subject_ids
-        // For source selection we only need single id — use the first subject_id (primary)
-        // We enrich with dept info from the dept_names + rebuild a flat list per dept
-        // Actually, the subjects API deduplicates by name+code+semester.
-        // Each entry has subject_ids[] for all dept rows. For source selection we pick one
-        // representative per unique subject. We'll use id (primary) for picking.
-        setSrcSubjects(flattenSubjects(data ?? []))
+      .then(({ subjects }) => {
+        setSrcSubjects(rawToFlat(subjects ?? []))
         setLoadingSrcSubjects(false)
       })
       .catch(() => setLoadingSrcSubjects(false))
@@ -188,51 +184,25 @@ export default function CopySyllabusPage() {
     setSelectedTargetIds(new Set())
     fetch(`/api/super-admin/subjects?college_id=${tgtCollegeId}`)
       .then((r) => r.json())
-      .then(({ data }) => {
-        setTgtSubjects(flattenSubjects(data ?? []))
+      .then(({ subjects }) => {
+        setTgtSubjects(rawToFlat(subjects ?? []))
         setLoadingTgtSubjects(false)
       })
       .catch(() => setLoadingTgtSubjects(false))
   }, [tgtCollegeId])
 
-  // The subjects API returns deduplicated entries with subject_ids[].
-  // Flatten them into individual rows so we can filter by department_id.
-  function flattenSubjects(deduped) {
-    // The API doesn't return department_id per se — it collapses dept rows.
-    // We need the raw per-dept data. The API returns dept_names[] but not dept IDs.
-    // Since we need to filter by dept, we use the dept_names to reconstruct a usable
-    // flat list. Each deduped entry becomes N rows, one per dept_name.
-    // However the API doesn't give us dept IDs in the deduplicated response.
-    //
-    // Workaround: we use the per-entry primary id and associate it with its dept_names.
-    // For display-only filtering we synthesise a fake dept_id from dept_name.
-    // This is purely a UI filter — the actual subject_ids are used for the API call.
-    const rows = []
-    for (const s of deduped) {
-      if (s.dept_names && s.dept_names.length > 0) {
-        s.dept_names.forEach((deptName, i) => {
-          rows.push({
-            // Use the matching subject_id for this dept row — subject_ids[i] maps to dept_names[i]
-            id:            s.subject_ids[i] ?? s.subject_ids[0],
-            name:          s.name,
-            code:          s.code,
-            semester:      s.semester,
-            department_id: deptName,   // use name as synthetic key for filtering
-            dept_name:     deptName,
-          })
-        })
-      } else {
-        rows.push({
-          id:            s.subject_ids[0] ?? s.id,
-          name:          s.name,
-          code:          s.code,
-          semester:      s.semester,
-          department_id: '',
-          dept_name:     '—',
-        })
-      }
-    }
-    return rows
+  // Convert raw API subject rows (from the `subjects` key) to the flat shape
+  // used by CollegeSubjectCascade. Raw rows have real department_id UUIDs and
+  // a joined departments.name field — no synthetic keys needed.
+  function rawToFlat(rawRows) {
+    return rawRows.map((s) => ({
+      id:            s.id,
+      name:          s.name,
+      code:          s.code ?? '',
+      semester:      s.semester,
+      department_id: s.department_id ?? '',
+      dept_name:     s.departments?.name ?? '',
+    }))
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
