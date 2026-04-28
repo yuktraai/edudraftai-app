@@ -7,6 +7,7 @@ import { CreditWarning }       from '@/components/ui/CreditWarning'
 import { OnboardingTour }      from '@/components/onboarding/OnboardingTour'
 import { NotificationBell }    from './NotificationBell'
 import { HelpButton }          from '@/components/support/HelpButton'
+import { ThemeToggle }         from '@/components/ui/ThemeToggle'
 
 /**
  * AppShell — wraps the app layout with a responsive sidebar.
@@ -87,6 +88,7 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, dem
           </button>
           <span className="font-heading text-base font-bold text-white">EduDraftAI</span>
           <div className="ml-auto flex items-center gap-2">
+            <ThemeToggle />
             <NotificationBell />
             {creditBalance !== null && (
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -102,7 +104,8 @@ export function AppShell({ role, name, creditBalance, personalCreditBalance, dem
         </div>
 
         {/* Desktop top bar */}
-        <div className="hidden lg:flex items-center justify-end px-6 py-2 border-b border-border bg-surface shrink-0">
+        <div className="hidden lg:flex items-center justify-end gap-3 px-6 py-2 border-b border-border bg-surface shrink-0">
+          <ThemeToggle />
           <NotificationBell />
         </div>
 
