@@ -2,23 +2,33 @@
 
 import { useState, useEffect } from 'react'
 
-const PERSONAL_PACKS = [
-  { id: 'p10',  credits: 10,  price_paise: 4900,  label: '10 Credits',  popular: false },
-  { id: 'p25',  credits: 25,  price_paise: 10900, label: '25 Credits',  popular: true  },
-  { id: 'p50',  credits: 50,  price_paise: 18900, label: '50 Credits',  popular: false },
-]
-
 export function BuyCreditsModal({ open, onClose, onSuccess }) {
+  const [packages,     setPackages]     = useState([])
+  const [pkgLoading,   setPkgLoading]   = useState(true)
+  const [pkgError,     setPkgError]     = useState(null)
   const [loadingPackId, setLoadingPackId] = useState(null)
-  const [error, setError] = useState(null)
+  const [error,        setError]        = useState(null)
 
-  // Load Razorpay script when modal opens
+  // Load Razorpay script + fetch packages when modal opens
   useEffect(() => {
-    if (open && !window.Razorpay) {
+    if (!open) return
+
+    if (!window.Razorpay) {
       const s = document.createElement('script')
       s.src = 'https://checkout.razorpay.com/v1/checkout.js'
       document.head.appendChild(s)
     }
+
+    setPkgLoading(true)
+    setPkgError(null)
+    fetch('/api/credits/personal/packages')
+      .then(r => r.json())
+      .then(({ packages: pkgs, error: err }) => {
+        if (err || !pkgs) { setPkgError('Could not load packages. Please try again.'); return }
+        setPackages(pkgs)
+      })
+      .catch(() => setPkgError('Could not load packages. Please try again.'))
+      .finally(() => setPkgLoading(false))
   }, [open])
 
   if (!open) return null
@@ -29,9 +39,9 @@ export function BuyCreditsModal({ open, onClose, onSuccess }) {
 
     try {
       const res = await fetch('/api/credits/personal/purchase', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pack_id: pack.id }),
+        body:    JSON.stringify({ pack_id: pack.id }),
       })
       const json = await res.json()
 
@@ -76,7 +86,7 @@ export function BuyCreditsModal({ open, onClose, onSuccess }) {
       })
 
       rzp.open()
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.')
       setLoadingPackId(null)
     }
@@ -105,64 +115,80 @@ export function BuyCreditsModal({ open, onClose, onSuccess }) {
         </p>
 
         {/* Pack cards */}
-        <div className="flex flex-col gap-3">
-          {PERSONAL_PACKS.map(pack => {
-            const isLoading = loadingPackId === pack.id
-            const isDisabled = loadingPackId !== null
-            const priceRupees = pack.price_paise / 100
-            const perCredit = (priceRupees / pack.credits).toFixed(1)
+        {pkgLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 bg-bg border border-border rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : pkgError ? (
+          <div className="text-sm text-error bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-center">
+            {pkgError}
+          </div>
+        ) : packages.length === 0 ? (
+          <div className="text-sm text-muted text-center py-6">
+            No credit packages available at the moment.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {packages.map(pack => {
+              const isLoading    = loadingPackId === pack.id
+              const isDisabled   = loadingPackId !== null
+              const priceRupees  = pack.price_paise / 100
+              const perCredit    = (priceRupees / pack.credits).toFixed(1)
 
-            return (
-              <div
-                key={pack.id}
-                className={`border rounded-xl p-4 flex items-center justify-between transition-colors ${
-                  pack.popular
-                    ? 'border-teal bg-teal-light'
-                    : 'border-border bg-surface'
-                }`}
-              >
-                {/* Left: credits + pricing */}
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-heading font-bold text-text text-base">{pack.label}</span>
-                    {pack.popular && (
-                      <span className="text-xs font-semibold text-teal bg-white border border-teal px-2 py-0.5 rounded-full">
-                        Most Popular
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted">
-                    <span className="font-semibold text-text">
-                      ₹{priceRupees.toLocaleString('en-IN')}
-                    </span>
-                    <span className="ml-2">· ₹{perCredit} / credit</span>
-                  </div>
-                </div>
-
-                {/* Right: Select button */}
-                <button
-                  onClick={() => handleSelectPack(pack)}
-                  disabled={isDisabled}
-                  className={`ml-4 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
-                    isDisabled
-                      ? 'bg-bg text-muted cursor-not-allowed'
-                      : pack.popular
-                        ? 'bg-teal text-white hover:bg-teal-2'
-                        : 'bg-navy text-white hover:bg-navy-2'
+              return (
+                <div
+                  key={pack.id}
+                  className={`border rounded-xl p-4 flex items-center justify-between transition-colors ${
+                    pack.is_popular
+                      ? 'border-teal bg-teal-light'
+                      : 'border-border bg-surface'
                   }`}
                 >
-                  {isLoading && (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                  )}
-                  {isLoading ? 'Processing…' : 'Select'}
-                </button>
-              </div>
-            )
-          })}
-        </div>
+                  {/* Left: credits + pricing */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-heading font-bold text-text text-base">{pack.name}</span>
+                      {pack.is_popular && (
+                        <span className="text-xs font-semibold text-teal bg-white border border-teal px-2 py-0.5 rounded-full">
+                          Most Popular
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted">
+                      <span className="font-semibold text-text">
+                        ₹{priceRupees.toLocaleString('en-IN')}
+                      </span>
+                      <span className="ml-2">· ₹{perCredit} / credit</span>
+                    </div>
+                  </div>
+
+                  {/* Right: Select button */}
+                  <button
+                    onClick={() => handleSelectPack(pack)}
+                    disabled={isDisabled}
+                    className={`ml-4 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+                      isDisabled
+                        ? 'bg-bg text-muted cursor-not-allowed'
+                        : pack.is_popular
+                          ? 'bg-teal text-white hover:bg-teal-2'
+                          : 'bg-navy text-white hover:bg-navy-2'
+                    }`}
+                  >
+                    {isLoading && (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                    )}
+                    {isLoading ? 'Processing…' : 'Select'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Error message */}
         {error && (

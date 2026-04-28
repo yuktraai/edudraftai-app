@@ -2,14 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 
-const PERSONAL_PACKS = [
-  { id: 'p10',  credits: 10,  price_paise: 4900,  label: '10 Credits',  popular: false },
-  { id: 'p25',  credits: 25,  price_paise: 10900, label: '25 Credits',  popular: true  },
-  { id: 'p50',  credits: 50,  price_paise: 18900, label: '50 Credits',  popular: false },
-]
-
 // POST /api/credits/personal/purchase
-// Body: { pack_id }
+// Body: { pack_id }   (pack_id is now the UUID from personal_credit_packages)
 // Role: lecturer only
 // Creates a Razorpay order for a personal credit pack
 export async function POST(request) {
@@ -31,8 +25,16 @@ export async function POST(request) {
     const { pack_id } = body
     if (!pack_id) return Response.json({ error: 'pack_id is required' }, { status: 400 })
 
-    const pack = PERSONAL_PACKS.find(p => p.id === pack_id)
-    if (!pack) return Response.json({ error: 'Invalid pack_id' }, { status: 404 })
+    // Fetch package from DB — price is always authoritative from the DB, never from client
+    const { data: pack, error: packErr } = await adminSupabase
+      .from('personal_credit_packages')
+      .select('id, name, credits, price_paise')
+      .eq('id', pack_id)
+      .eq('is_active', true)
+      .single()
+
+    if (packErr || !pack)
+      return Response.json({ error: 'Package not found or no longer available' }, { status: 404 })
 
     // Create Razorpay order (lazy import keeps it server-side only)
     const Razorpay = (await import('razorpay')).default
