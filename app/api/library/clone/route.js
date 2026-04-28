@@ -28,9 +28,10 @@ export async function POST(request) {
     const { source_draft_id } = parsed.data
 
     // Fetch the source draft — must be published and from the same college
+    // Include clone_count so we can safely increment it
     const { data: source, error: srcErr } = await adminSupabase
       .from('content_generations')
-      .select('id, content_type, subject_id, syllabus_chunk_id, prompt_params, raw_output, college_id')
+      .select('id, content_type, subject_id, syllabus_chunk_id, prompt_params, raw_output, college_id, clone_count')
       .eq('id', source_draft_id)
       .eq('is_published', true)
       .eq('status', 'completed')
@@ -55,7 +56,6 @@ export async function POST(request) {
         ai_model:          'cloned',
         credits_used:      0,
         status:            'completed',
-        is_published:      false,
         current_version:   1,
       })
       .select('id')
@@ -63,24 +63,23 @@ export async function POST(request) {
 
     if (insertErr) throw insertErr
 
-    // Record in draft_clones
-    await adminSupabase.from('draft_clones').insert({
-      source_draft_id,
-      cloned_by:       user.id,
-      cloned_draft_id: cloned.id,
-    })
-
-    // Increment clone_count on source
-    await adminSupabase.rpc('increment_clone_count', { p_draft_id: source_draft_id })
-      .catch(() => {
-        // Fallback: manual increment if RPC doesn't exist
-        adminSupabase
-          .from('content_generations')
-          .update({ clone_count: (source.clone_count ?? 0) + 1 })
-          .eq('id', source_draft_id)
-          .then(() => {})
-          .catch(() => {})
+    // Record in draft_clones (non-fatal)
+    const { error: cloneRecordErr } = await adminSupabase
+      .from('draft_clones')
+      .insert({
+        source_draft_id,
+        cloned_by:       user.id,
+        cloned_draft_id: cloned.id,
       })
+    if (cloneRecordErr) logger.error('[clone] draft_clones insert failed', cloneRecordErr)
+
+    // Increment clone_count on source — direct update, fully non-fatal
+    const newCount = (source.clone_count ?? 0) + 1
+    const { error: incErr } = await adminSupabase
+      .from('content_generations')
+      .update({ clone_count: newCount })
+      .eq('id', source_draft_id)
+    if (incErr) logger.error('[clone] clone_count increment failed', incErr)
 
     return Response.json({ cloned_draft_id: cloned.id }, { status: 201 })
   } catch (err) {
