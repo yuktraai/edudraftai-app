@@ -723,6 +723,191 @@
   color: var(--navy);
 }
 
+/* ── Full footer (4-column) ─────────────────────────────────────────────── */
+
+.lp-footer-full {
+  background: var(--navy);
+  color: rgba(255, 255, 255, 0.65);
+  padding: 72px 0 0;
+  margin-top: 80px;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.lp-footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 48px;
+  padding-bottom: 56px;
+}
+
+/* Brand column */
+.lp-footer-brand {}
+
+/* Override header brand colors for the dark footer background */
+.lp-footer-brand .lp-brand {
+  color: #fff;
+  margin-bottom: 18px;
+}
+
+.lp-footer-brand .lp-brand-badge {
+  background: linear-gradient(145deg, var(--teal), #009e91);
+  box-shadow: none;
+}
+
+.lp-footer-brand .lp-logo-mark {
+  background: var(--teal);
+  color: var(--navy);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  margin-bottom: 14px;
+}
+
+.lp-footer-brand .lp-logo-text {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  color: #fff;
+  letter-spacing: -0.3px;
+  margin-bottom: 14px;
+}
+
+.lp-footer-brand .lp-logo-text span {
+  color: var(--teal);
+}
+
+.lp-footer-tagline {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 220px;
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+
+.lp-footer-by {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 12px;
+}
+
+.lp-footer-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--teal);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.lp-footer-email:hover {
+  color: var(--teal-2);
+}
+
+.lp-footer-yuktra-link {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s;
+}
+
+.lp-footer-yuktra-link:hover {
+  color: var(--teal);
+}
+
+.lp-footer-socials {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.lp-footer-social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.lp-footer-social-link:hover {
+  background: var(--teal);
+  color: var(--navy);
+}
+
+/* Link columns */
+.lp-footer-col {}
+
+.lp-footer-col-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0 0 16px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+
+.lp-footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lp-footer-links li a {
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  font-size: 0.88rem;
+  transition: color 0.2s;
+}
+
+.lp-footer-links li a:hover {
+  color: var(--teal);
+}
+
+/* Bottom bar */
+.lp-footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 22px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.lp-footer-bottom-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.lp-footer-bottom-right a {
+  color: rgba(255, 255, 255, 0.35);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.lp-footer-bottom-right a:hover {
+  color: rgba(255, 255, 255, 0.65);
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
@@ -904,6 +1089,26 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  /* Full footer responsive */
+  .lp-footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 36px;
+  }
+
+  .lp-footer-brand {
+    grid-column: 1 / -1;
+  }
+
+  .lp-footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .lp-footer-bottom-right {
+    gap: 14px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -935,6 +1140,16 @@
   .lp-hero-list,
   .counter-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  /* Full footer — single column on small phones */
+  .lp-footer-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .lp-footer-brand {
+    grid-column: auto;
   }
 
   .counter-box {
