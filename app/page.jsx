@@ -4,9 +4,18 @@ import { CountdownTimer }   from '@/components/landing/CountdownTimer'
 import { WaitlistSection }  from '@/components/landing/WaitlistSection'
 
 export const metadata = {
-  title: 'EduDraftAI | AI Drafting for Diploma College Lecturers',
+  title: 'EduDraftAI — AI Lesson Notes, MCQ & Question Bank Generator for SCTEVT Colleges',
   description:
-    'EduDraftAI helps diploma college lecturers create lesson notes, MCQs, question banks, and internal tests faster with syllabus-aligned AI built for institutional use.',
+    'Generate SCTEVT syllabus-locked lesson notes, MCQ banks, question banks and internal test papers in seconds. AI-powered teaching content platform for Odisha diploma engineering colleges. Free trial available.',
+  alternates: {
+    canonical: 'https://edudraftai.com',
+  },
+  openGraph: {
+    title:       'EduDraftAI — AI Teaching Content for SCTEVT Diploma Colleges',
+    description: 'Generate lesson notes, MCQ banks, question banks and test papers instantly. Built for SCTEVT Odisha diploma engineering lecturers.',
+    url:         'https://edudraftai.com',
+    type:        'website',
+  },
 }
 
 export default function LandingPage() {
