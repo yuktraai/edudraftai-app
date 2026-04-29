@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import { SubjectTable } from '@/components/admin/SubjectTable'
 import { SubjectFormModal } from '@/components/admin/SubjectFormModal'
+import { BulkSubjectAddModal } from '@/components/admin/BulkSubjectAddModal'
 
 export default function SuperAdminSubjectsPage() {
   const [colleges, setColleges]               = useState([])
@@ -14,6 +15,7 @@ export default function SuperAdminSubjectsPage() {
   const [filterSemester, setFilterSemester]   = useState('')
   const [loading, setLoading]                 = useState(true)
   const [showModal, setShowModal]             = useState(false)
+  const [showBulkModal, setShowBulkModal]     = useState(false)
   const [editingSubject, setEditingSubject]   = useState(null)
 
   // Load colleges once on mount
@@ -108,7 +110,10 @@ export default function SuperAdminSubjectsPage() {
             Add, edit, or deactivate subjects across all colleges.
           </p>
         </div>
-        <Button onClick={openAdd}>+ Add Subject</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowBulkModal(true)}>⊞ Bulk Add</Button>
+          <Button onClick={openAdd}>+ Add Subject</Button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -182,12 +187,20 @@ export default function SuperAdminSubjectsPage() {
         />
       )}
 
-      {/* Modal */}
+      {/* Single add/edit modal */}
       <SubjectFormModal
         open={showModal}
         onClose={() => setShowModal(false)}
         onSaved={handleSaved}
         subject={editingSubject}
+        colleges={colleges}
+      />
+
+      {/* Bulk add modal */}
+      <BulkSubjectAddModal
+        open={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        onSaved={handleSaved}
         colleges={colleges}
       />
     </div>

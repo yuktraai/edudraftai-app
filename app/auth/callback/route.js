@@ -32,15 +32,16 @@ export async function GET(request) {
   // ── Exchange for a session ──────────────────────────────────────────────────
   let exchangeError
 
-  if (code) {
-    // Magic link / OAuth PKCE flow
-    ;({ error: exchangeError } = await supabase.auth.exchangeCodeForSession(code))
-  } else {
-    // Invite / OTP token flow (token_hash + type params)
+  if (tokenHash) {
+    // token_hash + type flow — used by invite, OTP, recovery links
+    // This does NOT require a code_verifier cookie, so it works from email clients
     ;({ error: exchangeError } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type:       type ?? 'invite',
     }))
+  } else if (code) {
+    // PKCE code flow — used by magic link sign-in (code_verifier cookie set by login page)
+    ;({ error: exchangeError } = await supabase.auth.exchangeCodeForSession(code))
   }
 
   if (exchangeError) {
