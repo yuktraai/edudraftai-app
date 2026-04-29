@@ -105,8 +105,8 @@ export const config = {
      * - _next/image (image optimisation)
      * - favicon.ico
      * - /auth/* (Supabase callback route — must be excluded from this guard)
-     * - public assets (png, jpg, svg, etc.)
+     * - public assets (images, html verification files, robots.txt, sitemap.xml)
      */
-    '/((?!_next/static|_next/image|favicon.ico|auth/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|auth/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|html|txt|xml)$).*)',
   ],
 }
