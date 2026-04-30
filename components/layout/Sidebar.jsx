@@ -18,6 +18,7 @@ const NAV_LINKS = {
     { label: 'Logs',             href: '/super-admin/logs' },
     { label: 'Waitlist',         href: '/super-admin/waitlist' },
     { label: 'Support Tickets',  href: '/super-admin/tickets' },
+    { label: 'Careers',          href: '/super-admin/careers' },
     { label: "What's New",       href: '/super-admin/changelog', alertKey: 'changelog' },
   ],
   college_admin: [

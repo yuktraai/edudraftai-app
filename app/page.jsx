@@ -39,6 +39,7 @@ export default function LandingPage() {
             <a href="#roles">For Teams</a>
             <a href="#how">How It Works</a>
             <Link href="/webinar">Webinars</Link>
+            <Link href="/careers">Careers</Link>
             <Link className="lp-nav-login" href="/login">Login →</Link>
             <a className="lp-nav-cta" href="mailto:info@yuktraai.com?subject=EduDraftAI%20Demo%20Request">Book a Demo</a>
           </nav>
@@ -473,6 +474,7 @@ export default function LandingPage() {
                 <li><a href="#how">How It Works</a></li>
                 <li><a href="#roles">For Teams</a></li>
                 <li><Link href="/webinar">Webinars</Link></li>
+                <li><Link href="/careers">Careers</Link></li>
                 <li><Link href="/login">Login to App →</Link></li>
               </ul>
             </div>
