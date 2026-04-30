@@ -305,7 +305,7 @@ export default function ApplicationsPage() {
                   {/* Current Role */}
                   <td className="px-4 py-4">
                     <span className="text-xs text-muted">
-                      {app.current_role || <span className="italic text-slate-400">—</span>}
+                      {app.applicant_role || <span className="italic text-slate-400">—</span>}
                     </span>
                   </td>
                   {/* Applied */}

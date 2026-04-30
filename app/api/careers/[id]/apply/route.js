@@ -34,7 +34,7 @@ export async function POST(request, { params }) {
     const fullName    = (formData.get('full_name')    ?? '').toString().trim()
     const email       = (formData.get('email')        ?? '').toString().trim().toLowerCase()
     const phone       = (formData.get('phone')        ?? '').toString().trim()
-    const currentRole = (formData.get('current_role') ?? '').toString().trim()
+    const currentRole = (formData.get('applicant_role') ?? '').toString().trim()
     const resumeFile  = formData.get('resume')
 
     // ── 2. Server-side validation ──────────────────────────────────────────────
@@ -111,7 +111,7 @@ export async function POST(request, { params }) {
         full_name:    fullName,
         email,
         phone,
-        current_role: currentRole || null,
+        applicant_role: currentRole || null,
         resume_path:  storagePath,
         resume_url:   storagePath,  // same as path; signed URL generated per-request in admin API
         status:       'pending',

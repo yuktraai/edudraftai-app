@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
 
     const { data: applications, error } = await adminSupabase
       .from('job_applications')
-      .select('id, full_name, email, phone, current_role, resume_path, status, applied_at, notes')
+      .select('id, full_name, email, phone, applicant_role, resume_path, status, applied_at, notes')
       .eq('job_id', jobId)
       .order('applied_at', { ascending: false })
 

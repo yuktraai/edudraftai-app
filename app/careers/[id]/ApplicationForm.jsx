@@ -10,7 +10,7 @@ export function ApplicationForm({ jobId, jobTitle }) {
     full_name:    '',
     email:        '',
     phone:        '',
-    current_role: '',
+    applicant_role: '',
   })
   const [file,       setFile]       = useState(null)
   const [fileError,  setFileError]  = useState('')
@@ -56,7 +56,7 @@ export function ApplicationForm({ jobId, jobTitle }) {
       fd.append('full_name',    fields.full_name.trim())
       fd.append('email',        fields.email.trim())
       fd.append('phone',        fields.phone.trim())
-      fd.append('current_role', fields.current_role.trim())
+      fd.append('applicant_role', fields.applicant_role.trim())
       fd.append('resume',       file)
 
       const res  = await fetch(`/api/careers/${jobId}/apply`, {
@@ -153,15 +153,15 @@ export function ApplicationForm({ jobId, jobTitle }) {
 
       {/* Current Role */}
       <div>
-        <label className="block text-sm font-semibold text-navy mb-1.5" htmlFor="current_role">
+        <label className="block text-sm font-semibold text-navy mb-1.5" htmlFor="applicant_role">
           Current Role / Year of Study
           <span className="text-muted font-normal ml-1">(optional)</span>
         </label>
         <input
-          id="current_role"
-          name="current_role"
+          id="applicant_role"
+          name="applicant_role"
           type="text"
-          value={fields.current_role}
+          value={fields.applicant_role}
           onChange={handleChange}
           placeholder="e.g. Software Engineer at XYZ / 3rd year B.Tech"
           className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-text text-sm focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30 transition-colors placeholder:text-slate-400"

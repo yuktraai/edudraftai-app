@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS public.job_applications (
   full_name     TEXT NOT NULL,
   email         TEXT NOT NULL,
   phone         TEXT NOT NULL,
-  current_role  TEXT,                      -- optional: current job title or year of study
+  applicant_role TEXT,                     -- optional: current job title or year of study
   resume_path   TEXT NOT NULL,             -- Supabase Storage path: applications/{job_id}/{ts}_{filename}
   resume_url    TEXT NOT NULL,             -- public or signed URL stored at insert time
   status        TEXT NOT NULL DEFAULT 'pending'
