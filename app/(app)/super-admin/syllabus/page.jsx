@@ -104,6 +104,15 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
     chunkCountBySubject[c.subject_id] = (chunkCountBySubject[c.subject_id] ?? 0) + 1
   }
 
+  // Helper: a subject is considered "completed" if either:
+  //   (a) its latest syllabus_file has parse_status = 'completed', OR
+  //   (b) it has no file record at all but has at least 1 syllabus_chunk
+  function hasCompletedSyllabus(subjectId) {
+    const file = latestFileBySubject[subjectId]
+    if (file) return file.parse_status === 'completed'
+    return (chunkCountBySubject[subjectId] ?? 0) > 0
+  }
+
   const totalSubjects = subjects?.length ?? 0
 
   // Apply filters
@@ -113,10 +122,9 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
     if (activeSemester  && String(s.semester) !== String(activeSemester)) return false
     if (activeSubjectIds.length > 0 && !activeSubjectIds.includes(s.id)) return false
     if (activeSyllabusStatus) {
-      const file = latestFileBySubject[s.id]
-      const hasCompleted = file?.parse_status === 'completed'
-      if (activeSyllabusStatus === 'uploaded' && !hasCompleted) return false
-      if (activeSyllabusStatus === 'missing'  &&  hasCompleted) return false
+      const completed = hasCompletedSyllabus(s.id)
+      if (activeSyllabusStatus === 'uploaded' && !completed) return false
+      if (activeSyllabusStatus === 'missing'  &&  completed) return false
     }
     return true
   })
@@ -212,11 +220,18 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
                         <td className="px-5 py-3">
                           {s.latest_file
                             ? <ParseStatusBadge status={s.latest_file.parse_status} />
-                            : <Badge variant="muted">Not uploaded</Badge>
+                            : s.chunk_count > 0
+                              ? <ParseStatusBadge status="completed" />
+                              : <Badge variant="muted">Not uploaded</Badge>
                           }
                         </td>
                         <td className="px-5 py-3 text-muted text-xs">
-                          {formatDate(s.latest_file?.created_at)}
+                          {s.latest_file?.created_at
+                            ? formatDate(s.latest_file.created_at)
+                            : s.chunk_count > 0
+                              ? <span className="text-teal font-medium">Via chunks</span>
+                              : '—'
+                          }
                         </td>
                         <td className="px-5 py-3">
                           <SyllabusRowActions subjectId={s.id} subjectName={s.name} hasFile={!!s.latest_file} />
