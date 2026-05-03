@@ -32,7 +32,7 @@ export function CreditBar({ used, balance, demoRemaining = 0 }) {
       <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-teal opacity-60" />
 
       <div className="flex items-start justify-between gap-2 mb-3 pl-3">
-        <p className="text-xs font-semibold text-muted uppercase tracking-wide">Credits Left</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Credits Left</p>
         <div className="w-8 h-8 rounded-xl bg-white/60 flex items-center justify-center shrink-0">
           <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
@@ -52,7 +52,7 @@ export function CreditBar({ used, balance, demoRemaining = 0 }) {
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="text-[11px] text-muted mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               {pct}% remaining · {used} used
             </p>
           </div>

@@ -72,13 +72,13 @@ export function ActivityChart() {
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-sm font-bold text-navy">Generation Activity</h2>
-          <p className="text-xs text-muted mt-0.5">Last 30 days</p>
+          <h2 className="text-sm font-bold text-text">Generation Activity</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Last 30 days</p>
         </div>
         {hasActivity && (
           <div className="flex flex-wrap gap-3">
             {Object.entries(TYPE_LABELS).map(([key, label]) => (
-              <span key={key} className="flex items-center gap-1 text-[11px] text-muted">
+              <span key={key} className="flex items-center gap-1 text-[11px] text-slate-400">
                 <span className="w-2 h-2 rounded-full" style={{ background: TYPE_COLORS[key] }} />
                 {label}
               </span>
@@ -103,17 +103,17 @@ export function ActivityChart() {
       {!loading && hasActivity && (
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={data} barSize={6} barGap={1}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={tickFormatter}
-              tick={{ fontSize: 11, fill: '#718096' }}
+              tick={{ fontSize: 11, fill: '#94a3b8' }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 11, fill: '#718096' }}
+              tick={{ fontSize: 11, fill: '#94a3b8' }}
               tickLine={false}
               axisLine={false}
               width={24}

@@ -21,7 +21,7 @@ export function StatCard({ label, value, sub, icon, variant = 'default', trend, 
       <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-teal opacity-60" />
 
       <div className="flex items-start justify-between gap-2 mb-3 pl-3">
-        <p className="text-xs font-semibold text-muted uppercase tracking-wide leading-tight">{label}</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide leading-tight">{label}</p>
         <div className="w-8 h-8 rounded-xl bg-teal/10 flex items-center justify-center shrink-0">
           {icon}
         </div>
