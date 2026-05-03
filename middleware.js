@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 const AUTH_ROUTES = ['/login', '/verify']
 
 // Public routes that must never trigger the auth redirect
-const PUBLIC_PREFIXES = ['/webinar', '/careers']
+const PUBLIC_PREFIXES = ['/webinar', '/careers', '/college-pilot']
 
 // Route prefixes that require authentication
 const PROTECTED_PREFIXES = [

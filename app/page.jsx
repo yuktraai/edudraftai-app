@@ -500,6 +500,7 @@ export default function LandingPage() {
             <div className="lp-footer-col">
               <h4 className="lp-footer-col-title">Company</h4>
               <ul className="lp-footer-links">
+                <li><Link href="/college-pilot">College Pilot</Link></li>
                 <li><Link href="/contact">Contact Us</Link></li>
                 <li>
                   <a

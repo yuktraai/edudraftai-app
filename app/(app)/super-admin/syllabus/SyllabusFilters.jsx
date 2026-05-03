@@ -14,6 +14,7 @@ export function SyllabusFilters({
   activeDeptId,
   activeSemester,
   activeSubjectIds,
+  activeSyllabusStatus,
   total,
   filtered,
 }) {
@@ -24,7 +25,8 @@ export function SyllabusFilters({
     activeCollegeId ||
     activeDeptId ||
     activeSemester ||
-    activeSubjectIds.length > 0
+    activeSubjectIds.length > 0 ||
+    activeSyllabusStatus
   )
 
   function buildParams(overrides) {
@@ -59,11 +61,15 @@ export function SyllabusFilters({
   }
 
   function handleSemesterChange(e) {
-    // Changing semester resets subject filter
     const qs = buildParams({
       semester:    e.target.value,
       subject_ids: '',
     })
+    router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
+  }
+
+  function handleSyllabusStatusChange(e) {
+    const qs = buildParams({ syllabus_status: e.target.value })
     router.push(`/super-admin/syllabus${qs ? '?' + qs : ''}`)
   }
 
@@ -130,6 +136,17 @@ export function SyllabusFilters({
               Semester {s}
             </option>
           ))}
+        </select>
+
+        {/* Syllabus status filter */}
+        <select
+          className={selectCls}
+          value={activeSyllabusStatus ?? ''}
+          onChange={handleSyllabusStatusChange}
+        >
+          <option value="">All (syllabus status)</option>
+          <option value="uploaded">✅ Has Syllabus</option>
+          <option value="missing">❌ No Syllabus</option>
         </select>
 
         {/* Subject multi-select */}

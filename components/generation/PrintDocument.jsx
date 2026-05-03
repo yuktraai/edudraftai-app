@@ -69,14 +69,6 @@ function PrintHeader({ college, subjectInfo, generation }) {
         )}
         <div>
           <div className="print-college-name">{college.name}</div>
-          {college.address && (
-            <div className="print-college-address">{college.address}</div>
-          )}
-          {(college.district || college.state) && (
-            <div className="print-college-address">
-              {[college.district, college.state].filter(Boolean).join(', ')}
-            </div>
-          )}
         </div>
       </div>
 

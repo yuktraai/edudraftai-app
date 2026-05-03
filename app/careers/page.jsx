@@ -60,11 +60,15 @@ function JobCard({ job }) {
 }
 
 export default async function CareersPage() {
-  const { data: jobs } = await adminSupabase
+  const { data: jobs, error: jobsError } = await adminSupabase
     .from('job_postings')
     .select('id, title, department, location, type, experience, description, created_at')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
+
+  if (jobsError) {
+    console.error('[careers page] failed to fetch job_postings:', jobsError.message)
+  }
 
   const activeJobs = jobs ?? []
 

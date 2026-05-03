@@ -41,10 +41,11 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
   if (profile?.role !== 'super_admin') redirect('/dashboard')
 
   // Extract active filters from searchParams early — needed to scope the departments query
-  const activeCollegeId  = searchParams?.college_id  ?? ''
-  const activeDeptId     = searchParams?.dept_id     ?? ''
-  const activeSemester   = searchParams?.semester    ?? ''
-  const activeSubjectIds = (searchParams?.subject_ids ?? '')
+  const activeCollegeId      = searchParams?.college_id      ?? ''
+  const activeDeptId         = searchParams?.dept_id         ?? ''
+  const activeSemester       = searchParams?.semester        ?? ''
+  const activeSyllabusStatus = searchParams?.syllabus_status ?? '' // 'uploaded' | 'missing' | ''
+  const activeSubjectIds     = (searchParams?.subject_ids ?? '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
@@ -111,6 +112,12 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
     if (activeDeptId    && s.department_id !== activeDeptId) return false
     if (activeSemester  && String(s.semester) !== String(activeSemester)) return false
     if (activeSubjectIds.length > 0 && !activeSubjectIds.includes(s.id)) return false
+    if (activeSyllabusStatus) {
+      const file = latestFileBySubject[s.id]
+      const hasCompleted = file?.parse_status === 'completed'
+      if (activeSyllabusStatus === 'uploaded' && !hasCompleted) return false
+      if (activeSyllabusStatus === 'missing'  &&  hasCompleted) return false
+    }
     return true
   })
   const filteredTotal = filteredSubjects.length
@@ -164,6 +171,7 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
         activeCollegeId={activeCollegeId}
         activeDeptId={activeDeptId}
         activeSemester={activeSemester}
+        activeSyllabusStatus={activeSyllabusStatus}
         activeSubjectIds={activeSubjectIds}
         total={totalSubjects}
         filtered={filteredTotal}
