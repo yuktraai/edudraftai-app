@@ -50,7 +50,6 @@ export async function POST(request) {
 
     // Logo upload (optional)
     let logoPath = null
-    let logoUrl  = null
 
     if (logoFile && typeof logoFile !== 'string' && logoFile.size > 0) {
       if (!ALLOWED_LOGO_MIME.includes(logoFile.type)) {
@@ -80,8 +79,6 @@ export async function POST(request) {
         logger.error('POST /api/college-pilot — logo upload failed', uploadErr)
         // Non-fatal — continue without logo
         logoPath = null
-      } else {
-        logoUrl = logoPath // store path; signed URL generated on demand
       }
     }
 
@@ -99,7 +96,6 @@ export async function POST(request) {
         departments,
         lecturer_emails: lecturerEmails || null,
         logo_path:       logoPath,
-        logo_url:        logoUrl,
         status:          'new',
       })
 
