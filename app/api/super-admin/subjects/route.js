@@ -38,7 +38,7 @@ export async function GET(request) {
 
     let query = adminSupabase
       .from('subjects')
-      .select('id, name, code, semester, is_active, has_math, college_id, department_id, departments(name)')
+      .select('id, name, code, semester, is_active, has_math, college_id, department_id, departments(name), colleges(name)')
       .eq('is_active', true)
       .order('semester')
       .order('name')
