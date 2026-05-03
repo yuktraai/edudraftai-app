@@ -32,7 +32,7 @@ export default function CopyDepartmentPage() {
     if (!srcCollege) return
     fetch(`/api/super-admin/departments?college_id=${srcCollege}`)
       .then(r => r.json())
-      .then(j => setSrcDepts(j.data ?? []))
+      .then(j => setSrcDepts(j.departments ?? []))
       .catch(() => {})
   }, [srcCollege])
 
@@ -42,7 +42,7 @@ export default function CopyDepartmentPage() {
     if (!tgtCollege) return
     fetch(`/api/super-admin/departments?college_id=${tgtCollege}`)
       .then(r => r.json())
-      .then(j => setTgtDepts(j.data ?? []))
+      .then(j => setTgtDepts(j.departments ?? []))
       .catch(() => {})
   }, [tgtCollege])
 
