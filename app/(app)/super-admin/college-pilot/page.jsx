@@ -117,6 +117,32 @@ function StatusSelect({ id, currentStatus, onChange }) {
   )
 }
 
+// Expandable lecturer emails list
+function EmailsList({ raw }) {
+  const [open, setOpen] = useState(false)
+  const emails = (raw ?? '').split(',').map(e => e.trim()).filter(Boolean)
+  if (!emails.length) return <span className="text-xs text-muted italic">None added</span>
+  const preview = emails.slice(0, 2)
+  const rest    = emails.slice(2)
+  return (
+    <div className="text-xs space-y-0.5">
+      {preview.map((e, i) => (
+        <a key={i} href={`mailto:${e}`} className="block text-teal hover:underline truncate max-w-[190px]">{e}</a>
+      ))}
+      {rest.length > 0 && (
+        <>
+          {open && rest.map((e, i) => (
+            <a key={i} href={`mailto:${e}`} className="block text-teal hover:underline truncate max-w-[190px]">{e}</a>
+          ))}
+          <button onClick={() => setOpen(v => !v)} className="text-muted font-medium hover:text-navy hover:underline mt-0.5">
+            {open ? 'show less' : `+${rest.length} more`}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // Expandable departments list
 function DeptsList({ departments }) {
   const [open, setOpen] = useState(false)
@@ -232,6 +258,7 @@ export default function CollegePilotAdminPage() {
                 <th className="px-5 py-3 text-left">College</th>
                 <th className="px-4 py-3 text-left">Principal</th>
                 <th className="px-4 py-3 text-left">Departments</th>
+                <th className="px-4 py-3 text-left">Lecturer Emails</th>
                 <th className="px-4 py-3 text-left hidden lg:table-cell">District</th>
                 <th className="px-4 py-3 text-left">Submitted</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -255,6 +282,9 @@ export default function CollegePilotAdminPage() {
                   </td>
                   <td className="px-4 py-4">
                     <DeptsList departments={req.departments} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <EmailsList raw={req.lecturer_emails} />
                   </td>
                   <td className="px-4 py-4 hidden lg:table-cell">
                     <span className="text-xs text-muted">{req.district ?? '—'}</span>

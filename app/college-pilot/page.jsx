@@ -23,8 +23,9 @@ export default function CollegePilotPage() {
     principal_name:  '',
     principal_email: '',
   })
-  const [departments, setDepartments]   = useState([''])
-  const [logo,        setLogo]          = useState(null)
+  const [departments,    setDepartments]    = useState([''])
+  const [lecturerEmails, setLecturerEmails] = useState([''])
+  const [logo,           setLogo]           = useState(null)
   const [logoError,   setLogoError]     = useState('')
   const [submitting,  setSubmitting]    = useState(false)
   const [success,     setSuccess]       = useState(false)
@@ -41,6 +42,14 @@ export default function CollegePilotPage() {
   function addDept()    { setDepartments(prev => [...prev, '']) }
   function removeDept(i) {
     setDepartments(prev => prev.length === 1 ? [''] : prev.filter((_, idx) => idx !== i))
+  }
+
+  function updateEmail(i, val) {
+    setLecturerEmails(prev => { const n = [...prev]; n[i] = val; return n })
+  }
+  function addEmail()    { setLecturerEmails(prev => [...prev, '']) }
+  function removeEmail(i) {
+    setLecturerEmails(prev => prev.length === 1 ? [''] : prev.filter((_, idx) => idx !== i))
   }
 
   function handleLogo(e) {
@@ -67,9 +76,12 @@ export default function CollegePilotPage() {
 
     setSubmitting(true)
     try {
+      const validEmails = lecturerEmails.map(e => e.trim()).filter(Boolean)
+
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => fd.append(k, v))
       validDepts.forEach(d => fd.append('departments[]', d.trim()))
+      if (validEmails.length) fd.append('lecturer_emails', validEmails.join(','))
       if (logo) fd.append('logo', logo)
 
       const res  = await fetch('/api/college-pilot', { method: 'POST', body: fd })
@@ -281,6 +293,46 @@ export default function CollegePilotPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                   Add department
+                </button>
+              </div>
+            </section>
+
+            {/* Lecturer Emails */}
+            <section>
+              <h2 className="text-base font-bold text-navy mb-1 pb-3 border-b border-border">
+                Lecturer Email IDs
+                <span className="text-muted font-normal ml-1 text-sm">(optional — we'll send invitations to these)</span>
+              </h2>
+              <p className="text-xs text-muted mt-3 mb-3">
+                Add the official email IDs of lecturers you'd like to invite to EduDraftAI. You can add more later too.
+              </p>
+              <div className="space-y-2">
+                {lecturerEmails.map((email, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <span className="w-5 h-5 rounded-full bg-navy/10 text-navy text-xs font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => updateEmail(i, e.target.value)}
+                      placeholder="lecturer@college.edu.in"
+                      className={inputCls + ' flex-1'}
+                    />
+                    <button type="button" onClick={() => removeEmail(i)}
+                      className="p-1.5 text-slate-400 hover:text-error rounded-lg hover:bg-red-50 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={addEmail}
+                  className="mt-1 inline-flex items-center gap-1.5 text-sm text-teal font-medium hover:text-teal-2 transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add lecturer email
                 </button>
               </div>
             </section>

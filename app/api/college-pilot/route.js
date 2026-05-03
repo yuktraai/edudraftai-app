@@ -28,6 +28,7 @@ export async function POST(request) {
     const principalName  = (formData.get('principal_name')  ?? '').toString().trim()
     const principalEmail = (formData.get('principal_email') ?? '').toString().trim().toLowerCase()
     const departments    = formData.getAll('departments[]').map(d => d.toString().trim()).filter(Boolean)
+    const lecturerEmails = (formData.get('lecturer_emails') ?? '').toString().trim()
     const logoFile       = formData.get('logo')
 
     // Validation
@@ -96,6 +97,7 @@ export async function POST(request) {
         principal_name:  principalName,
         principal_email: principalEmail,
         departments,
+        lecturer_emails: lecturerEmails || null,
         logo_path:       logoPath,
         logo_url:        logoUrl,
         status:          'new',
