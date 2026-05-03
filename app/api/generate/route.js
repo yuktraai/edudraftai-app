@@ -356,7 +356,7 @@ export async function POST(request) {
           model:    OPENAI_MODEL,
           messages,
           stream:   true,
-          max_tokens: 4096,
+          max_tokens: 8192,
         })
         for await (const chunk of stream) {
           const text = chunk.choices[0]?.delta?.content ?? ''
@@ -377,7 +377,7 @@ export async function POST(request) {
 
           const anthropicStream = anthropic.messages.stream({
             model:      ANTHROPIC_MODEL,
-            max_tokens: 4096,
+            max_tokens: 8192,
             system,
             messages:   [{ role: 'user', content: user }],
           })
