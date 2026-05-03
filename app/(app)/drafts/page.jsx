@@ -315,18 +315,18 @@ function MoveDraftDropdown({ draftId, folders, currentFolderId, onMoved }) {
 function DraftCardWithActions({ draft, folders, folderMap, onMoved }) {
   const folderName = draft.folder_id ? (folderMap[draft.folder_id] ?? null) : null
   return (
-    <div className="relative">
-      <DraftCard draft={draft} folderName={folderName} />
-      {/* Move button overlaid in bottom-right of card */}
-      <div className="absolute bottom-3 right-[4.5rem]">
+    <DraftCard
+      draft={draft}
+      folderName={folderName}
+      footerActions={
         <MoveDraftDropdown
           draftId={draft.id}
           folders={folders}
           currentFolderId={draft.folder_id}
           onMoved={onMoved}
         />
-      </div>
-    </div>
+      }
+    />
   )
 }
 

@@ -32,7 +32,7 @@ const TAG_LABELS = {
   exam_paper:    'Exam Paper',
 }
 
-export function DraftCard({ draft, folderName = null }) {
+export function DraftCard({ draft, folderName = null, footerActions = null }) {
   const meta        = TYPE_META[draft.content_type] ?? { label: draft.content_type, color: 'bg-bg text-muted border-border' }
   const topic       = draft.prompt_params?.topic ?? '—'
   const parentTopic = draft.prompt_params?.parent_topic
@@ -94,7 +94,7 @@ export function DraftCard({ draft, folderName = null }) {
           </div>
         )}
 
-        {/* Footer: word count + model */}
+        {/* Footer: word count + model + optional actions + view */}
         <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
           <span className="flex items-center gap-1 text-xs text-muted">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -108,12 +108,15 @@ export function DraftCard({ draft, folderName = null }) {
             </svg>
             {model}
           </span>
-          <span className="flex items-center gap-1 text-xs text-muted ml-auto">
-            <svg className="w-3.5 h-3.5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-            View
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            {footerActions}
+            <span className="flex items-center gap-1 text-xs text-muted">
+              <svg className="w-3.5 h-3.5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+              View
+            </span>
+          </div>
         </div>
       </div>
     </Link>
