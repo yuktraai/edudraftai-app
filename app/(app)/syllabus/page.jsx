@@ -78,7 +78,7 @@ export default async function SyllabusPage() {
 
       <SyllabusClient
         deptList={deptList}
-        hasFavorites={favSubjects.size > 0}
+        hasFavorites={favSubjects.size > 0 || favDepts.size > 0}
       />
     </div>
   )

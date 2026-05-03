@@ -35,7 +35,8 @@ export function SyllabusClient({ deptList, hasFavorites }) {
             .map(([sem, subjects]) => [
               sem,
               subjects.filter(s => {
-                if (showFavOnly && !hasFilters && !s.favorited) return false
+                // showFavOnly: show all subjects if their dept is starred, OR if the subject itself is starred
+                if (showFavOnly && !hasFilters && !dept.favorited && !s.favorited) return false
                 if (filterQ) {
                   const q = filterQ.toLowerCase()
                   if (!s.name.toLowerCase().includes(q) && !s.code?.toLowerCase().includes(q)) return false
@@ -84,7 +85,7 @@ export function SyllabusClient({ deptList, hasFavorites }) {
                 showFavOnly ? 'bg-teal text-white' : 'text-muted hover:text-text'
               }`}
             >
-              ★ My Subjects
+              ★ Favourites
             </button>
             <button
               onClick={() => setShowFavOnly(false)}
