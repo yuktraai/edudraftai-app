@@ -63,7 +63,7 @@ export function GenerateGrid() {
             <h3 className="font-bold text-white text-sm mb-1 group-hover:text-teal transition-colors">
               {label}
             </h3>
-            <p className="text-slate-400 text-xs leading-relaxed">{desc}</p>
+            <p className="text-slate-300 text-xs leading-relaxed">{desc}</p>
             <svg
               className="absolute bottom-4 right-4 w-4 h-4 text-slate-600 group-hover:text-teal transition-colors"
               fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}

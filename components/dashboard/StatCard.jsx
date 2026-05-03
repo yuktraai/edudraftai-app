@@ -30,7 +30,7 @@ export function StatCard({ label, value, sub, icon, variant = 'default', trend, 
       <div className="pl-3">
         <p className={`text-3xl font-bold leading-none ${valueColors[variant]}`}>{value}</p>
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {sub && <p className="text-xs text-muted">{sub}</p>}
+          {sub && <p className="text-xs text-muted font-medium">{sub}</p>}
           {trend !== undefined && (
             <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full ${
               trend > 0 ? 'bg-green-100 text-success' :

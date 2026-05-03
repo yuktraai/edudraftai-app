@@ -60,19 +60,19 @@ export function ContentBreakdown({ byType, total }) {
               </div>
 
               <div className="text-teal mb-2">{icon}</div>
-              <p className="text-xs font-semibold text-slate-400 mb-1">{label}</p>
+              <p className="text-xs font-semibold text-slate-300 mb-1">{label}</p>
               <p className="text-2xl font-bold text-teal">{count}</p>
 
               {/* Progress bar */}
-              <div className="mt-2.5 h-1 bg-teal/10 rounded-full overflow-hidden">
+              <div className="mt-2.5 h-1 bg-teal/20 rounded-full overflow-hidden">
                 <div className="h-full bg-teal rounded-full transition-all" style={{ width: `${pct}%` }} />
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">{pct}% of total</p>
+              <p className="text-[10px] text-slate-400 mt-1">{pct}% of total</p>
 
               {count === 0 && (
                 <Link
                   href={href}
-                  className="mt-2 flex items-center gap-1 text-[11px] text-teal font-medium hover:text-teal-2 transition-colors"
+                  className="mt-2 flex items-center gap-1 text-[11px] text-teal font-semibold hover:text-teal-2 transition-colors"
                 >
                   Generate first
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
