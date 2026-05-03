@@ -73,7 +73,6 @@ export function ContentBreakdown({ byType, total }) {
                 <Link
                   href={href}
                   className="mt-2 flex items-center gap-1 text-[11px] text-teal font-medium hover:text-teal-2 transition-colors"
-                  onClick={e => e.stopPropagation()}
                 >
                   Generate first
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
