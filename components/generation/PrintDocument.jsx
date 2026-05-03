@@ -58,7 +58,7 @@ function PrintHeader({ college, subjectInfo, generation }) {
 
   return (
     <div className="print-header">
-      {/* Left: logo + college details */}
+      {/* Left: logo + college name */}
       <div className="print-header-left">
         {college.logo_url && (
           <img
@@ -67,10 +67,14 @@ function PrintHeader({ college, subjectInfo, generation }) {
             className="print-logo"
           />
         )}
-        <div>
+        <div className="print-college-info">
           <div className="print-college-name">{college.name}</div>
+          <div className="print-college-sub">SCTEVT Affiliated Polytechnic · Odisha</div>
         </div>
       </div>
+
+      {/* Vertical divider */}
+      <div className="print-header-divider" />
 
       {/* Right: document metadata */}
       <div className="print-header-right">
@@ -278,27 +282,59 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
         /* ── Header ── */
         .print-header {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
           justify-content: space-between;
-          gap: 20px;
-          padding-bottom: 14px;
+          gap: 24px;
+          padding-bottom: 16px;
           border-bottom: 2.5px solid #0D1F3C;
           margin-bottom: 26px;
         }
-        .print-header-left  { display: flex; align-items: flex-start; gap: 14px; flex: 1; }
-        .print-logo         { width: 60px; height: 60px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
+        .print-header-left {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 1;
+          min-width: 0;
+        }
+        .print-logo {
+          width: 64px;
+          height: 64px;
+          object-fit: contain;
+          border-radius: 8px;
+          flex-shrink: 0;
+          border: 1px solid #e2e8f0;
+          padding: 3px;
+          background: #fff;
+        }
+        .print-college-info { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
         .print-college-name {
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 16px; font-weight: 800; color: #0D1F3C; line-height: 1.3;
+          font-size: 17px; font-weight: 800; color: #0D1F3C; line-height: 1.25;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .print-college-address { font-size: 11px; color: #718096; margin-top: 3px; max-width: 280px; line-height: 1.5; }
-        .print-header-right { text-align: right; font-size: 11.5px; color: #4a5568; flex-shrink: 0; min-width: 200px; }
-        .print-doc-type     {
+        .print-college-sub {
+          font-size: 11px; color: #718096; margin-top: 3px; font-weight: 500; letter-spacing: .01em;
+        }
+        .print-header-divider {
+          width: 1.5px;
+          align-self: stretch;
+          background: #e2e8f0;
+          flex-shrink: 0;
+          border-radius: 2px;
+        }
+        .print-header-right {
+          text-align: right;
+          font-size: 11.5px;
+          color: #4a5568;
+          flex-shrink: 0;
+          min-width: 220px;
+        }
+        .print-doc-type {
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-size: 12px; font-weight: 700; color: #00B4A6;
-          text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
+          text-transform: uppercase; letter-spacing: .06em; margin-bottom: 7px;
         }
-        .print-meta-line    { margin-bottom: 3px; }
+        .print-meta-line { margin-bottom: 3px; line-height: 1.6; }
 
         /* ── Prose ── */
         .print-prose h1 { font-size: 17px; font-weight: 800; color: #0D1F3C; margin: 22px 0 10px; }
