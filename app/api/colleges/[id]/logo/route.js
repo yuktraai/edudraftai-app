@@ -68,16 +68,18 @@ export async function POST(request, { params }) {
 
     if (uploadError) throw uploadError
 
-    // Get public URL
+    // Get public URL — append cache-buster so browsers don't serve stale logo
+    // after re-upload (storage path is fixed, URL would otherwise be identical)
     const { data: { publicUrl } } = adminSupabase.storage.from(BUCKET).getPublicUrl(storagePath)
+    const logoUrl = `${publicUrl}?v=${Date.now()}`
 
     // Update college record
     await adminSupabase
       .from('colleges')
-      .update({ logo_url: publicUrl, logo_storage_path: storagePath })
+      .update({ logo_url: logoUrl, logo_storage_path: storagePath })
       .eq('id', collegeId)
 
-    return Response.json({ data: { logo_url: publicUrl } })
+    return Response.json({ data: { logo_url: logoUrl } })
   } catch (err) {
     logger.error('[logo upload]', err)
     return Response.json({ error: 'Upload failed' }, { status: 500 })
