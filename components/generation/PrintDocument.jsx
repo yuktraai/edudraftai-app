@@ -165,16 +165,160 @@ function MCQContent({ text }) {
   )
 }
 
+// ── Question Bank HTML builder ─────────────────────────────────────────────────
+
+/**
+ * Render a raw text string that may contain LaTeX math (\[...\] and \(...\)).
+ * Math is converted to KaTeX HTML first; remaining text is then HTML-escaped.
+ * This avoids the double-encoding problems of running escHtml() then KaTeX.
+ */
+function renderMathText(str) {
+  if (!str) return ''
+  const slots = []
+  let text = str
+
+  // Block math: \[ ... \]
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, f) => {
+    try { slots.push(`<div class="katex-block">${katex.renderToString(f.trim(), { displayMode: true,  throwOnError: false, output: 'html' })}</div>`) }
+    catch { slots.push(`<code>\\[${f}\\]</code>`) }
+    return `\x00${slots.length - 1}\x00`
+  })
+  // Inline math: \( ... \)
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, f) => {
+    try { slots.push(katex.renderToString(f.trim(), { displayMode: false, throwOnError: false, output: 'html' })) }
+    catch { slots.push(`<code>\\(${f}\\)</code>`) }
+    return `\x00${slots.length - 1}\x00`
+  })
+
+  // Escape HTML in non-math text, then restore placeholders
+  text = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\x00(\d+)\x00/g, (_, i) => slots[parseInt(i)])
+  return text
+}
+
+/**
+ * Build the answer key section for a question bank.
+ */
+function buildQBAnswerKeyHtml(rawText) {
+  if (!rawText?.trim()) return ''
+  const lines = rawText.split('\n')
+  const out   = ['<div class="qb-answer-key page-break">']
+  out.push('<div class="qb-ak-title">Answer Key</div>')
+
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (!line || /^---/.test(line) || /^[═=]{3,}$/.test(line)) continue
+
+    // Section header: "SECTION A Answers"
+    if (/^SECTION\s+[A-C]/i.test(line)) {
+      out.push(`<div class="qb-ak-section-title">${escHtml(line)}</div>`)
+      continue
+    }
+    // Q-level answer: "Q1. answer text"
+    const qMatch = line.match(/^(Q\d+)[.)]\s*(.+)/i)
+    if (qMatch) {
+      out.push(
+        `<div class="qb-ak-item">` +
+        `<strong class="qb-ak-qnum">${escHtml(qMatch[1])}.</strong> ` +
+        `${renderMathText(qMatch[2])}` +
+        `</div>`
+      )
+      continue
+    }
+    // Bullet points inside an answer
+    const bullet = line.match(/^[•\-\*]\s+(.+)/)
+    if (bullet) {
+      out.push(`<div class="qb-ak-bullet">• ${renderMathText(bullet[1])}</div>`)
+      continue
+    }
+    out.push(`<p class="qb-ak-text">${renderMathText(line)}</p>`)
+  }
+  out.push('</div>')
+  return out.join('\n')
+}
+
+/**
+ * Main question bank parser.
+ * - Strips the duplicate AI header (Subject / Code / Semester / Marks / Instructions)
+ * - SECTION A/B/C → navy left-border header with marks badge
+ * - Q\d+ questions → flex row, right-aligned [N] marks badge, KaTeX for math
+ * - *** End of Question Paper *** → styled end marker
+ * - Answer key → page-break section
+ */
+function buildQuestionBankHtml(rawText) {
+  if (!rawText) return ''
+
+  const DELIM    = '--- ANSWER KEY ---'
+  const delimIdx = rawText.indexOf(DELIM)
+  const qPart    = delimIdx !== -1 ? rawText.slice(0, delimIdx) : rawText
+  const akPart   = delimIdx !== -1 ? rawText.slice(delimIdx)    : ''
+
+  const lines = qPart.split('\n')
+  const parts = []
+  let i = 0
+
+  // Skip the duplicate header block — jump to the first SECTION line
+  while (i < lines.length && !/^SECTION\s+[A-C]/i.test(lines[i].trim())) { i++ }
+
+  while (i < lines.length) {
+    const line = lines[i].trim()
+
+    if (!line) { i++; continue }
+
+    // End of paper marker
+    if (/^\*+\s*End of Question Paper/i.test(line) || /^End of Question Paper/i.test(line)) {
+      parts.push('<div class="qb-end-marker">— End of Question Paper —</div>')
+      i++; continue
+    }
+
+    // SECTION header: "SECTION A — Very Short Answer Questions (2 Marks Each)"
+    if (/^SECTION\s+[A-C]/i.test(line)) {
+      const marksEach = line.match(/\((\d+)\s*[Mm]arks?\s*[Ee]ach\)/)
+      const label     = line.replace(/\(\d+\s*[Mm]arks?\s*[Ee]ach\)/, '').trim()
+      parts.push(
+        `<div class="qb-section-hdr">` +
+        `<span class="qb-section-label">${escHtml(label)}</span>` +
+        (marksEach ? `<span class="qb-section-marks">${escHtml(marksEach[1])} Marks Each</span>` : '') +
+        `</div>`
+      )
+      i++; continue
+    }
+
+    // Question line: "Q1. question text [2 Marks]"
+    if (/^Q\d+[.)]/i.test(line)) {
+      const marksMatch = line.match(/\[(\d+)\s*[Mm]arks?\]\s*$/)
+      const marks      = marksMatch ? marksMatch[1] : null
+      const qText      = marks
+        ? line.replace(/\s*\[\d+\s*[Mm]arks?\]\s*$/, '').trim()
+        : line
+      parts.push(
+        `<div class="qb-question">` +
+        `<span class="qb-q-text">${renderMathText(qText)}</span>` +
+        (marks ? `<span class="qb-q-marks">[${escHtml(marks)}]</span>` : '') +
+        `</div>`
+      )
+      i++; continue
+    }
+
+    // Continuation / regular text (e.g. multi-line question, display math)
+    const rendered = renderMathText(line)
+    parts.push(`<p class="qb-text">${rendered}</p>`)
+    i++
+  }
+
+  const questionsHtml = `<div class="qb-questions">${parts.join('\n')}</div>`
+  const akHtml        = akPart.trim() ? buildQBAnswerKeyHtml(akPart) : ''
+  return questionsHtml + akHtml
+}
+
 function QuestionBankContent({ text }) {
-  const sections = text.split(/(?=section\s+[A-Z]|2[\s-]mark|5[\s-]mark|10[\s-]mark)/i)
   return (
-    <div className="print-qb">
-      {sections.map((section, i) => (
-        <div key={i} className="print-qb-section">
-          <div dangerouslySetInnerHTML={{ __html: renderContent(section) }} />
-        </div>
-      ))}
-    </div>
+    <div
+      className="print-qb"
+      dangerouslySetInnerHTML={{ __html: buildQuestionBankHtml(text ?? '') }}
+    />
   )
 }
 
@@ -671,12 +815,63 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
         .print-answer-key h2 { font-size: 14px; font-weight: 700; color: #0D1F3C; margin-bottom: 12px; }
         .print-answer-key-pre { font-family: monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.9; }
 
-        /* ── Question Bank ── */
-        .print-qb-section   { margin-bottom: 26px; }
-        .print-qb-section h2 {
-          font-size: 13px; font-weight: 800; color: #0D1F3C;
-          border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;
+        /* ── Question Bank — structured layout ── */
+        .print-qb { font-size: 12px; }
+
+        .qb-section-hdr {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          border-left: 4px solid #0D1F3C; background: #f1f5f9;
+          padding: 6px 12px 6px 10px; border-radius: 0 5px 5px 0;
+          margin: 22px 0 10px;
         }
+        .qb-section-label {
+          font-weight: 800; font-size: 11.5px; color: #0D1F3C;
+          text-transform: uppercase; letter-spacing: 0.05em; flex: 1;
+        }
+        .qb-section-marks {
+          font-weight: 700; font-size: 10.5px; color: #fff;
+          background: #0D1F3C; border-radius: 4px; padding: 2px 9px;
+          white-space: nowrap; flex-shrink: 0;
+        }
+
+        .qb-question {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 14px; margin: 8px 0; line-height: 1.65; page-break-inside: avoid;
+        }
+        .qb-q-text { flex: 1; color: #1a202c; }
+        .qb-q-marks {
+          font-weight: 700; font-size: 11px; color: #0D1F3C;
+          border: 1.5px solid #0D1F3C; border-radius: 4px; padding: 2px 8px;
+          white-space: nowrap; flex-shrink: 0;
+        }
+
+        .qb-text { margin: 4px 0 6px; line-height: 1.65; color: #4a5568; }
+
+        .qb-end-marker {
+          text-align: center; font-size: 11px; font-weight: 600; color: #718096;
+          border-top: 1px dashed #e2e8f0; margin-top: 28px; padding-top: 10px;
+          letter-spacing: 0.04em;
+        }
+
+        /* Answer key */
+        .qb-answer-key { margin-top: 36px; }
+        .qb-ak-title {
+          background: #0D1F3C; color: #fff; font-weight: 800; font-size: 13px;
+          padding: 8px 14px; border-radius: 4px; margin-bottom: 20px;
+          text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .qb-ak-section-title {
+          font-weight: 700; font-size: 12px; color: #0D1F3C;
+          border-bottom: 1.5px solid #e2e8f0; padding: 10px 0 5px; margin: 20px 0 8px;
+          text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .qb-ak-item {
+          display: flex; gap: 6px; margin: 6px 0 6px 14px;
+          font-size: 12px; line-height: 1.7;
+        }
+        .qb-ak-qnum { color: #0D1F3C; min-width: 30px; flex-shrink: 0; }
+        .qb-ak-bullet { margin: 4px 0 4px 24px; font-size: 12px; line-height: 1.65; color: #4a5568; }
+        .qb-ak-text   { margin: 4px 0; font-size: 12px; line-height: 1.65; color: #718096; }
 
         /* ── Test Plan — structured layout ── */
         .print-test-plan { font-size: 12px; }
