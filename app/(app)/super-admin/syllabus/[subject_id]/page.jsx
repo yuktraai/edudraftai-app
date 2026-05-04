@@ -5,7 +5,6 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { Badge } from '@/components/ui/Badge'
 import { ChunksEditor } from './ChunksEditor'
 import { ParseQualityTab } from './ParseQualityTab'
-import { RagDocsTab } from './RagDocsTab'
 import { ClearSyllabusButton } from '../ClearSyllabusButton'
 
 export const metadata = { title: 'Subject Syllabus — EduDraftAI' }
@@ -71,13 +70,6 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
 
   const chunks = rawChunks ?? []
 
-  // Fetch RAG documents for this subject
-  const { data: ragDocs } = await adminSupabase
-    .from('rag_documents')
-    .select('id, title, doc_type, chunk_count, index_status, indexed_at, created_at, error_message')
-    .eq('subject_id', subject_id)
-    .order('created_at', { ascending: false })
-
   // Group chunks by unit_number
   const groupedChunks = {}
   for (const chunk of chunks) {
@@ -94,13 +86,10 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
     ? chunks.reduce((s, c) => s + (c.parse_confidence ?? 0), 0) / chunks.length
     : null
 
-  const ragEnabled    = subject.rag_enabled ?? false
-  const ragDocCount   = (ragDocs ?? []).filter(d => d.index_status === 'indexed').length
-
   const TABS = [
     { id: 'chunks',  label: 'Chunks' },
     { id: 'quality', label: 'Parse Quality' },
-    { id: 'rag',     label: 'Reference Docs', badge: ragDocCount > 0 ? ragDocCount : null },
+    { id: 'rag',     label: 'Reference Docs' },
   ]
 
   return (
@@ -200,11 +189,6 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
                 {Math.round(avgConfidence * 100)}%
               </span>
             )}
-            {t.id === 'rag' && t.badge != null && (
-              <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-light text-teal">
-                {t.badge}
-              </span>
-            )}
           </Link>
         ))}
       </div>
@@ -261,13 +245,30 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
         />
       )}
 
-      {/* Reference Docs tab (Phase 11E) */}
+      {/* Reference Docs tab — Phase 51: now managed globally by subject code */}
       {activeTab === 'rag' && (
-        <RagDocsTab
-          docs={ragDocs ?? []}
-          subjectId={subject_id}
-          ragEnabled={ragEnabled}
-        />
+        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-[var(--teal)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-[var(--navy)] mb-1">Reference documents are now managed at the subject-code level.</p>
+              <p className="text-sm text-[var(--muted)] mb-3">
+                Upload reference books and past papers once for subject code <span className="font-mono font-semibold text-[var(--navy)]">{subject.code}</span> — they will be shared across all colleges teaching this subject.
+              </p>
+              <Link
+                href="/super-admin/canonical-docs"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--teal)] hover:underline"
+              >
+                Go to Canonical Reference Docs
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

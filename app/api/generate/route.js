@@ -12,7 +12,7 @@ import { buildRegenerationPrompt } from '@/lib/ai/prompts/regenerate'
 import { checkRefineInstruction } from '@/lib/ai/refine-guard'
 import { maybeRewardReferral } from '@/lib/referral'
 import { embedText } from '@/lib/rag/embedder'
-import { queryContext } from '@/lib/rag/pinecone'
+import { queryContext, canonicalNamespace } from '@/lib/rag/pinecone'
 import { validateOutput } from '@/lib/ai/validate-output'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
@@ -166,7 +166,7 @@ export async function POST(request) {
   // ── 4. Verify subject belongs to user's college ───────────────────────────
   const { data: subject } = await adminSupabase
     .from('subjects')
-    .select('id, name, semester, college_id, rag_enabled')
+    .select('id, name, semester, college_id, rag_enabled, code')
     .eq('id', subject_id)
     .eq('college_id', profile.college_id)
     .single()
@@ -338,11 +338,13 @@ export async function POST(request) {
       })
     : buildPrompt(content_type, promptParams)
 
-  if (subject.rag_enabled) {
+  // 51.6 — Use canonical namespace (code:TH2) instead of subject_id UUID
+  if (subject.rag_enabled && subject.code) {
     try {
       const ragQuery    = `${promptParams.topic}: ${selectedSubtopics.join(', ')}`
       const queryVec    = await embedText(ragQuery)
-      const ragResults  = await queryContext(subject_id, queryVec, 5)
+      const ns          = canonicalNamespace(subject.code)
+      const ragResults  = await queryContext(ns, queryVec, 5)
 
       if (ragResults.length > 0) {
         ragChunksUsed = ragResults.length
