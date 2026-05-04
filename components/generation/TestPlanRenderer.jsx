@@ -1,23 +1,21 @@
 'use client'
 
 /**
- * TestPlanRenderer — Phase 50
+ * TestPlanRenderer — Phase 50 (revised Phase 50.3)
  *
- * Parses the AI-generated internal test plan output and renders it with
- * proper structure: college header, meta row, instructions box, section
- * headers, question list, and pipe-table-to-HTML conversion.
- *
- * Used only when contentType === 'test_plan' in OutputViewer.
+ * Parses AI-generated internal test plan output and renders it cleanly:
+ * - Skips the duplicate AI header (college/subject/marks) — print header shows this
+ * - Strips all --- separator lines
+ * - Instructions in an amber highlighted box
+ * - SECTION A/B/C as navy-bordered prominent headers
+ * - Questions with marks right-aligned in brackets
+ * - Pipe tables converted to proper <table> elements
+ * - Mark Distribution and Topics Coverage styled with navy header row
  */
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Pipe table renderer ────────────────────────────────────────────────────────
 
-/**
- * Converts a markdown pipe-table string into an HTML <table> element.
- * Returns null if the lines don't look like a table.
- */
 function PipeTable({ lines }) {
-  // Filter out separator rows (---|---|---)
   const rows = lines.filter(l => !/^\s*\|[\s\-|:]+\|\s*$/.test(l))
   if (rows.length < 2) return null
 
@@ -28,7 +26,7 @@ function PipeTable({ lines }) {
 
   return (
     <div className="overflow-x-auto my-3">
-      <table className="w-full text-sm border-collapse border border-border">
+      <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-navy text-white">
             {parseRow(header).map((cell, i) => (
@@ -39,46 +37,76 @@ function PipeTable({ lines }) {
           </tr>
         </thead>
         <tbody>
-          {body.map((row, ri) => (
-            <tr key={ri} className={ri % 2 === 0 ? 'bg-surface' : 'bg-bg'}>
-              {parseRow(row).map((cell, ci) => (
-                <td key={ci} className="border border-border px-3 py-2 text-text">
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {body.map((row, ri) => {
+            const cells = parseRow(row)
+            const isTotal = cells[0]?.toLowerCase().trim() === 'total'
+            return (
+              <tr key={ri} className={
+                isTotal
+                  ? 'bg-teal-light font-bold border-t-2 border-navy'
+                  : ri % 2 === 0 ? 'bg-surface' : 'bg-bg'
+              }>
+                {cells.map((cell, ci) => (
+                  <td key={ci} className="border border-border px-3 py-2 text-text">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
 
-/**
- * Groups consecutive lines into logical blocks:
- * - table blocks (lines starting with |)
- * - section headers (SECTION A / B / C)
- * - the paper header block (first lines before INSTRUCTIONS)
- * - instructions block
- * - question lines (Q1. Q2. etc.)
- * - regular text / separators
- */
+// ── Block parser ───────────────────────────────────────────────────────────────
+
 function parseBlocks(text) {
-  const rawLines = text.split('\n')
+  // Strip everything before INSTRUCTIONS: — removes the duplicate AI header block
+  // (college name, subject, marks) since the outer UI already shows this info.
+  const instrIdx = text.search(/^INSTRUCTIONS\s*:/im)
+  const body = instrIdx >= 0 ? text.slice(instrIdx) : text
+
+  const rawLines = body.split('\n')
   const blocks = []
   let i = 0
 
   while (i < rawLines.length) {
     const line = rawLines[i]
+    const trimmed = line.trim()
 
-    // Skip raw separator lines (---)
-    if (/^---+\s*$/.test(line.trim())) {
+    // Skip blanks and raw --- separator lines
+    if (!trimmed || /^-{3,}$/.test(trimmed)) { i++; continue }
+
+    // INSTRUCTIONS block
+    if (/^INSTRUCTIONS\s*:/i.test(trimmed)) {
+      const items = []
+      i++
+      while (i < rawLines.length && rawLines[i].trim()) {
+        items.push(rawLines[i].trim().replace(/^\d+\.\s*/, ''))
+        i++
+      }
+      blocks.push({ type: 'instructions', items })
+      continue
+    }
+
+    // SECTION A / B / C
+    if (/^SECTION\s+[A-C]\b/i.test(trimmed)) {
+      blocks.push({ type: 'section', text: trimmed })
       i++
       continue
     }
 
-    // Pipe table — collect all consecutive pipe lines
-    if (line.trim().startsWith('|')) {
+    // ## Heading (Mark Distribution / Topics Coverage)
+    if (/^#{1,3}\s+/.test(trimmed)) {
+      blocks.push({ type: 'heading', text: trimmed.replace(/^#+\s*/, '') })
+      i++
+      continue
+    }
+
+    // Pipe table
+    if (trimmed.startsWith('|')) {
       const tableLines = []
       while (i < rawLines.length && rawLines[i].trim().startsWith('|')) {
         tableLines.push(rawLines[i])
@@ -88,165 +116,63 @@ function parseBlocks(text) {
       continue
     }
 
-    // Section header: SECTION A, SECTION B, SECTION C
-    if (/^SECTION\s+[A-C]\b/i.test(line.trim())) {
-      blocks.push({ type: 'section', text: line.trim() })
+    // Question line: Q1. Q2. etc.
+    if (/^Q\d+[.)]/i.test(trimmed)) {
+      const marksMatch = trimmed.match(/\[(\d+)\s*[Mm]arks?\]/)
+      const qText = marksMatch
+        ? trimmed.replace(/\s*\[\d+\s*[Mm]arks?\]/, '').trim()
+        : trimmed
+      blocks.push({ type: 'question', text: qText, marks: marksMatch?.[1] ?? null })
       i++
       continue
     }
 
-    // INSTRUCTIONS block
-    if (/^INSTRUCTIONS\s*:/i.test(line.trim())) {
-      const instrLines = []
-      while (i < rawLines.length) {
-        const l = rawLines[i].trim()
-        // Instructions block ends at first blank line after at least 2 lines
-        if (instrLines.length > 1 && l === '') break
-        instrLines.push(rawLines[i])
-        i++
-      }
-      blocks.push({ type: 'instructions', lines: instrLines })
-      continue
-    }
-
-    // Mark Distribution Table / Topics Coverage Map headings (## heading)
-    if (/^#{1,3}\s+(Mark Distribution|Topics Coverage)/i.test(line.trim())) {
-      blocks.push({ type: 'section-heading', text: line.replace(/^#+\s*/, '').trim() })
-      i++
-      continue
-    }
-
-    // Question line: Q1. / Q2. etc.
-    if (/^Q\d+[.)]/i.test(line.trim())) {
-      blocks.push({ type: 'question', text: line.trim() })
-      i++
-      continue
-    }
-
-    // Sub-item (a. b. c.) under a question
-    if (/^\s{2,}[a-j][.)]/i.test(line)) {
-      blocks.push({ type: 'sub-item', text: line.trim() })
-      i++
-      continue
-    }
-
-    // Blank line
-    if (line.trim() === '') {
-      blocks.push({ type: 'blank' })
-      i++
-      continue
-    }
-
-    // Everything else — plain text
-    blocks.push({ type: 'text', text: line })
+    // Regular text
+    blocks.push({ type: 'text', text: trimmed })
     i++
   }
 
   return blocks
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────────
 
 export function TestPlanRenderer({ content }) {
   if (!content) return null
 
-  // Split into: header block (before INSTRUCTIONS) + body
-  const instrIdx = content.search(/^INSTRUCTIONS\s*:/im)
-  let headerRaw = instrIdx > -1 ? content.slice(0, instrIdx) : ''
-  let bodyRaw   = instrIdx > -1 ? content.slice(instrIdx)    : content
-
-  // Clean leading/trailing --- from header
-  headerRaw = headerRaw.replace(/^---+\n?/m, '').replace(/\n?---+$/m, '').trim()
-
-  // Parse the header block into lines
-  const headerLines = headerRaw.split('\n').map(l => l.trim()).filter(Boolean)
-
-  // First line = college name + INTERNAL ASSESSMENT TEST
-  const collegeLine = headerLines[0] ?? ''
-  // Second line = Subject | Semester | Date
-  const metaLine    = headerLines[1] ?? ''
-  // Third line = Max Marks | Duration | etc.
-  const marksLine   = headerLines[2] ?? ''
-
-  const metaParts  = metaLine.split('|').map(p => p.trim()).filter(Boolean)
-  const marksParts = marksLine.split('|').map(p => p.trim()).filter(Boolean)
-
-  // Parse blocks for body
-  const blocks = parseBlocks(bodyRaw)
+  const blocks = parseBlocks(content)
 
   return (
-    <div className="font-sans text-sm text-text max-w-3xl mx-auto">
-
-      {/* ── College Header ─────────────────────────────────────────────── */}
-      {collegeLine && (
-        <div className="text-center mb-3">
-          <p className="text-base font-bold text-navy uppercase tracking-wide">
-            {collegeLine}
-          </p>
-        </div>
-      )}
-
-      {/* ── Meta rows ─────────────────────────────────────────────────── */}
-      {(metaParts.length > 0 || marksParts.length > 0) && (
-        <div className="border border-border rounded-lg px-4 py-3 mb-4 bg-bg text-xs space-y-1.5">
-          {metaParts.length > 0 && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {metaParts.map((p, i) => {
-                const [label, ...rest] = p.split(':')
-                const value = rest.join(':').trim()
-                return (
-                  <span key={i} className="text-muted">
-                    <span className="font-semibold text-text">{label.trim()}: </span>
-                    {value || label.trim()}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-          {marksParts.length > 0 && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {marksParts.map((p, i) => {
-                const [label, ...rest] = p.split(':')
-                const value = rest.join(':').trim()
-                return (
-                  <span key={i} className="text-muted">
-                    <span className="font-semibold text-text">{label.trim()}: </span>
-                    {value || label.trim()}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Body blocks ───────────────────────────────────────────────── */}
+    <div className="font-sans text-sm text-text space-y-0.5">
       {blocks.map((block, idx) => {
         switch (block.type) {
 
           case 'instructions':
             return (
-              <div key={idx} className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4 text-xs text-amber-900">
-                {block.lines.map((l, li) => (
-                  <p key={li} className={li === 0 ? 'font-semibold mb-1' : 'ml-1'}>
-                    {l.replace(/^INSTRUCTIONS\s*:\s*/i, l.startsWith('INSTRUCTION') ? 'Instructions:' : '')}
-                  </p>
-                ))}
+              <div key={idx} className="bg-amber-50 border border-amber-300 rounded-lg px-4 py-3 mb-4 mt-1">
+                <p className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-2">
+                  Instructions
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-amber-900 text-xs">
+                  {block.items.map((item, ii) => (
+                    <li key={ii}>{item}</li>
+                  ))}
+                </ol>
               </div>
             )
 
           case 'section':
             return (
-              <div key={idx} className="mt-5 mb-2 border-l-4 border-navy pl-3 py-1 bg-navy/5 rounded-r-lg">
-                <p className="font-bold text-navy text-sm uppercase tracking-wide">
+              <div key={idx} className="flex items-center gap-3 mt-5 mb-2 pl-3 border-l-4 border-navy bg-slate-100 py-1.5 rounded-r-lg">
+                <p className="font-bold text-navy text-xs uppercase tracking-wider">
                   {block.text}
                 </p>
               </div>
             )
 
-          case 'section-heading':
+          case 'heading':
             return (
-              <div key={idx} className="mt-6 mb-2 pt-4 border-t border-border">
+              <div key={idx} className="mt-6 mb-2 pb-1.5 border-b-2 border-navy">
                 <p className="font-bold text-navy text-sm">{block.text}</p>
               </div>
             )
@@ -256,32 +182,25 @@ export function TestPlanRenderer({ content }) {
 
           case 'question':
             return (
-              <p key={idx} className="my-1.5 font-medium text-text">
-                {block.text}
-              </p>
+              <div key={idx} className="flex items-start justify-between gap-4 my-1.5 leading-snug">
+                <span className="flex-1 font-medium text-text">{block.text}</span>
+                {block.marks && (
+                  <span className="shrink-0 text-xs font-bold text-navy border border-navy rounded px-1.5 py-0.5">
+                    [{block.marks}]
+                  </span>
+                )}
+              </div>
             )
-
-          case 'sub-item':
-            return (
-              <p key={idx} className="ml-6 my-0.5 text-muted">
-                {block.text}
-              </p>
-            )
-
-          case 'blank':
-            return <div key={idx} className="h-1" />
 
           case 'text':
           default:
             if (!block.text?.trim()) return null
-            // Bold any **text** markers
+            // Render **bold** markers
             const parts = block.text.split(/\*\*(.+?)\*\*/g)
             return (
-              <p key={idx} className="my-1 text-text leading-relaxed">
+              <p key={idx} className="my-1 text-text leading-relaxed text-xs">
                 {parts.map((part, pi) =>
-                  pi % 2 === 1
-                    ? <strong key={pi}>{part}</strong>
-                    : part
+                  pi % 2 === 1 ? <strong key={pi}>{part}</strong> : part
                 )}
               </p>
             )

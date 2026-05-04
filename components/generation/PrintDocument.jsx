@@ -178,24 +178,147 @@ function QuestionBankContent({ text }) {
   )
 }
 
-function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
-  const date    = formatDate(generation.created_at)
-  const topic   = generation.prompt_params?.topic ?? ''
+// ── Test Plan HTML builder (pure JS → HTML string for dangerouslySetInnerHTML) ──
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
 
-  // Replace common AI-generated placeholders with real values
+function buildPipeTable(lines) {
+  const rows = lines.filter(l => !/^\s*\|[\s\-|:]+\|\s*$/.test(l))
+  if (rows.length < 2) return ''
+  const parseRow = l => l.replace(/^\||\|$/g, '').split('|').map(c => c.trim())
+  const [header, ...body] = rows
+  const thead = '<thead><tr>' +
+    parseRow(header).map(c => `<th>${escHtml(c)}</th>`).join('') +
+    '</tr></thead>'
+  const tbody = '<tbody>' +
+    body.map(row => {
+      const cells = parseRow(row)
+      const isTotal = cells[0]?.toLowerCase().trim() === 'total'
+      return `<tr${isTotal ? ' class="tp-table-total"' : ''}>` +
+        cells.map(c => `<td>${escHtml(c)}</td>`).join('') +
+        '</tr>'
+    }).join('') +
+    '</tbody>'
+  return `<table class="tp-table">${thead}${tbody}</table>`
+}
+
+function buildTestPlanHtml(rawText) {
+  if (!rawText) return ''
+
+  // Strip everything before INSTRUCTIONS: — removes the duplicate AI-generated header
+  // (college name, subject, marks) since the PrintHeader already shows this info.
+  const instrIdx = rawText.search(/^INSTRUCTIONS\s*:/im)
+  const body = instrIdx >= 0 ? rawText.slice(instrIdx) : rawText
+
+  const lines = body.split('\n')
+  const parts = []
+  let i = 0
+
+  while (i < lines.length) {
+    const raw     = lines[i]
+    const line    = raw.trim()
+
+    // Skip blank lines and raw --- separator lines
+    if (!line || /^-{3,}$/.test(line)) { i++; continue }
+
+    // INSTRUCTIONS block — collect numbered items until blank line
+    if (/^INSTRUCTIONS\s*:/i.test(line)) {
+      const items = []
+      i++
+      while (i < lines.length && lines[i].trim()) {
+        items.push(lines[i].trim().replace(/^\d+\.\s*/, ''))
+        i++
+      }
+      parts.push(
+        `<div class="tp-instructions">` +
+        `<div class="tp-instr-label">Instructions</div>` +
+        `<ol class="tp-instr-list">` +
+        items.map(t => `<li>${escHtml(t)}</li>`).join('') +
+        `</ol></div>`
+      )
+      continue
+    }
+
+    // SECTION A / B / C header
+    if (/^SECTION\s+[A-C]\b/i.test(line)) {
+      parts.push(`<div class="tp-section-hdr">${escHtml(line)}</div>`)
+      i++
+      continue
+    }
+
+    // ## Heading (Mark Distribution Table / Topics Coverage Map)
+    if (/^#{1,3}\s+/.test(line)) {
+      const heading = line.replace(/^#+\s*/, '')
+      parts.push(`<div class="tp-table-title">${escHtml(heading)}</div>`)
+      i++
+      continue
+    }
+
+    // Pipe table — collect all consecutive pipe lines
+    if (line.startsWith('|')) {
+      const tableLines = []
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i])
+        i++
+      }
+      parts.push(buildPipeTable(tableLines))
+      continue
+    }
+
+    // Question line: Q1. Q2. Q3. etc.
+    if (/^Q\d+[.)]/i.test(line)) {
+      const marksMatch = line.match(/\[(\d+)\s*[Mm]arks?\]/)
+      const qText = marksMatch
+        ? line.replace(/\s*\[\d+\s*[Mm]arks?\]/, '').trim()
+        : line
+      if (marksMatch) {
+        parts.push(
+          `<div class="tp-question">` +
+          `<span class="tp-q-text">${escHtml(qText)}</span>` +
+          `<span class="tp-q-marks">[${marksMatch[1]}]</span>` +
+          `</div>`
+        )
+      } else {
+        parts.push(
+          `<div class="tp-question"><span class="tp-q-text">${escHtml(line)}</span></div>`
+        )
+      }
+      i++
+      continue
+    }
+
+    // Regular text — bold any **text**
+    const boldified = escHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    parts.push(`<p class="tp-text">${boldified}</p>`)
+    i++
+  }
+
+  return parts.join('\n')
+}
+
+function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
+  const date  = formatDate(generation.created_at)
+  const topic = generation.prompt_params?.topic ?? ''
+
+  // Replace AI-generated placeholders with real values before parsing
   const processed = (text ?? '')
     .replace(/\[COLLEGE NAME\]/gi, college?.name ?? '')
-    .replace(/\[DATE\]/gi, date)
-    .replace(/\[Date\]/g, date)
-    .replace(/\[SUBJECT\]/gi, subjectInfo?.name ?? '')
-    .replace(/\[SEMESTER\]/gi, subjectInfo?.semester ? `Semester ${subjectInfo.semester}` : '')
-    .replace(/\[LECTURER\]/gi, lecturer?.name ?? '')
-    .replace(/\[TOPIC\]/gi, topic)
+    .replace(/\[DATE\]/gi,         date)
+    .replace(/\[Date\]/g,          date)
+    .replace(/\[SUBJECT\]/gi,      subjectInfo?.name ?? '')
+    .replace(/\[SEMESTER\]/gi,     subjectInfo?.semester ? `Semester ${subjectInfo.semester}` : '')
+    .replace(/\[LECTURER\]/gi,     lecturer?.name ?? '')
+    .replace(/\[TOPIC\]/gi,        topic)
 
   return (
-    <div className="print-test-plan">
-      <div dangerouslySetInnerHTML={{ __html: renderContent(processed) }} />
-    </div>
+    <div
+      className="print-test-plan"
+      dangerouslySetInnerHTML={{ __html: buildTestPlanHtml(processed) }}
+    />
   )
 }
 
@@ -359,18 +482,52 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
           border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 12px;
         }
 
-        /* ── Test Plan ── */
-        .print-test-plan h1 { font-size: 16px; font-weight: 800; color: #0D1F3C; margin: 0 0 14px; text-align: center; }
-        .print-test-plan h2 { font-size: 13px; font-weight: 700; color: #0D1F3C; margin: 18px 0 8px; }
-        .print-test-plan h3 { font-size: 12px; font-weight: 700; color: #1a202c; margin: 12px 0 6px; }
-        .print-test-plan p  { margin: 0 0 8px; line-height: 1.7; }
-        .print-test-plan ul,
-        .print-test-plan ol { margin: 4px 0 10px 20px; }
-        .print-test-plan li { margin-bottom: 4px; line-height: 1.6; }
-        .print-test-plan table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-        .print-test-plan td,
-        .print-test-plan th  { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: left; }
-        .print-test-plan th  { background: #f4f7f6; font-weight: 700; color: #0D1F3C; }
+        /* ── Test Plan — structured layout ── */
+        .print-test-plan { font-size: 12px; }
+
+        .tp-instructions {
+          background: #fffbeb; border: 1.5px solid #f59e0b;
+          border-radius: 6px; padding: 9px 14px 11px; margin: 10px 0 18px;
+        }
+        .tp-instr-label {
+          font-weight: 700; font-size: 10.5px; text-transform: uppercase;
+          letter-spacing: 0.06em; color: #92400e; margin-bottom: 5px;
+        }
+        .tp-instr-list { margin: 0; padding-left: 18px; color: #78350f; }
+        .tp-instr-list li { margin-bottom: 3px; line-height: 1.55; }
+
+        .tp-section-hdr {
+          border-left: 4px solid #0D1F3C; padding: 5px 12px;
+          background: #f1f5f9; font-weight: 700; font-size: 11.5px;
+          text-transform: uppercase; letter-spacing: 0.05em; color: #0D1F3C;
+          margin: 18px 0 8px; border-radius: 0 4px 4px 0;
+        }
+
+        .tp-question {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          margin: 7px 0; gap: 16px; line-height: 1.55; page-break-inside: avoid;
+        }
+        .tp-q-text { flex: 1; }
+        .tp-q-marks {
+          font-weight: 700; font-size: 10.5px; color: #0D1F3C;
+          white-space: nowrap; flex-shrink: 0; border: 1px solid #0D1F3C;
+          border-radius: 3px; padding: 1px 6px;
+        }
+
+        .tp-table-title {
+          font-weight: 700; font-size: 12px; color: #0D1F3C;
+          margin: 22px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #0D1F3C;
+        }
+        .tp-table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 4px 0 18px; }
+        .tp-table th {
+          background: #0D1F3C; color: #fff; padding: 5px 10px;
+          font-weight: 600; font-size: 10.5px; text-align: left;
+          text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .tp-table td { border: 1px solid #e2e8f0; padding: 5px 10px; }
+        .tp-table tr:nth-child(even) td { background: #f8fafc; }
+        .tp-table-total td { font-weight: 700; background: #e6fffa !important; border-top: 2px solid #0D1F3C; }
+        .tp-text { margin: 0 0 6px; line-height: 1.65; }
 
         /* ── Footer ── */
         .print-footer {
