@@ -15,7 +15,10 @@ async function verifySuperAdmin() {
 
 // POST /api/super-admin/copy-department
 // Body: { src_college_id, src_dept_id, tgt_college_id, tgt_dept_id }
-// Calls the copy_department Postgres function (see migration SQL)
+//
+// Copies all subjects (and their syllabus chunks) from one department to another.
+// Subjects whose code already exists in the target college are skipped.
+// Does NOT call the Postgres RPC — performs copy in application code.
 export async function POST(request) {
   const user = await verifySuperAdmin()
   if (!user) return Response.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
@@ -37,46 +40,135 @@ export async function POST(request) {
       )
     }
 
-    // Verify both colleges and both departments exist
-    const [srcDept, tgtDept] = await Promise.all([
+    // ── Verify both departments exist ─────────────────────────────────────────
+    const [srcDeptRes, tgtDeptRes] = await Promise.all([
       adminSupabase.from('departments').select('id, name').eq('id', src_dept_id).eq('college_id', src_college_id).single(),
       adminSupabase.from('departments').select('id, name').eq('id', tgt_dept_id).eq('college_id', tgt_college_id).single(),
     ])
 
-    if (srcDept.error || !srcDept.data) {
+    if (srcDeptRes.error || !srcDeptRes.data)
       return Response.json({ error: 'Source department not found', code: 'NOT_FOUND' }, { status: 404 })
-    }
-    if (tgtDept.error || !tgtDept.data) {
+    if (tgtDeptRes.error || !tgtDeptRes.data)
       return Response.json({ error: 'Target department not found', code: 'NOT_FOUND' }, { status: 404 })
-    }
 
-    // Call the Postgres RPC function
-    const { data: result, error: rpcErr } = await adminSupabase
-      .rpc('copy_department', {
-        p_src_college_id: src_college_id,
-        p_src_dept_id:    src_dept_id,
-        p_tgt_college_id: tgt_college_id,
-        p_tgt_dept_id:    tgt_dept_id,
-        p_performed_by:   user.id,
+    // ── Fetch source subjects ─────────────────────────────────────────────────
+    const { data: srcSubjects, error: srcErr } = await adminSupabase
+      .from('subjects')
+      .select('id, name, code, semester, is_active, has_math, rag_enabled')
+      .eq('college_id', src_college_id)
+      .eq('department_id', src_dept_id)
+
+    if (srcErr) throw srcErr
+    if (!srcSubjects || srcSubjects.length === 0) {
+      return Response.json({
+        success:         true,
+        subjects_copied: 0,
+        chunks_copied:   0,
+        src_dept_name:   srcDeptRes.data.name,
+        tgt_dept_name:   tgtDeptRes.data.name,
+        message:         'Source department has no subjects to copy.',
       })
-
-    if (rpcErr) {
-      logger.error('POST /api/super-admin/copy-department — rpc error', rpcErr)
-      return Response.json(
-        { error: 'Copy operation failed: ' + (rpcErr.message ?? 'Unknown error'), code: 'RPC_ERROR' },
-        { status: 500 }
-      )
     }
+
+    // ── Fetch existing subject codes in target college (to detect duplicates) ──
+    const { data: existingSubjects } = await adminSupabase
+      .from('subjects')
+      .select('code')
+      .eq('college_id', tgt_college_id)
+
+    const existingCodes = new Set((existingSubjects ?? []).map(s => s.code?.trim().toUpperCase()))
+
+    // ── Copy subjects that don't already exist in target ──────────────────────
+    const subjectsToCopy = srcSubjects.filter(
+      s => !existingCodes.has(s.code?.trim().toUpperCase())
+    )
+
+    let subjectsCopied = 0
+    let chunksCopied   = 0
+
+    for (const src of subjectsToCopy) {
+      // Insert new subject into target college / department
+      const { data: newSubject, error: insertErr } = await adminSupabase
+        .from('subjects')
+        .insert({
+          college_id:    tgt_college_id,
+          department_id: tgt_dept_id,
+          name:          src.name,
+          code:          src.code,
+          semester:      src.semester,
+          is_active:     src.is_active,
+          has_math:      src.has_math ?? false,
+          rag_enabled:   false,   // RAG is opt-in per college — never copy the flag
+        })
+        .select('id')
+        .single()
+
+      if (insertErr) {
+        // Likely a unique constraint on (college_id, code) from a race condition — skip
+        logger.error('[copy-department] subject insert failed', { code: src.code, err: insertErr.message })
+        continue
+      }
+
+      subjectsCopied++
+
+      // ── Copy syllabus chunks for this subject ────────────────────────────
+      const { data: srcChunks } = await adminSupabase
+        .from('syllabus_chunks')
+        .select('unit_number, topic, subtopics, raw_text')
+        .eq('subject_id', src.id)
+        .eq('college_id', src_college_id)
+
+      if (srcChunks && srcChunks.length > 0) {
+        const chunkRows = srcChunks.map(c => ({
+          subject_id:       newSubject.id,
+          college_id:       tgt_college_id,
+          syllabus_file_id: null,   // no file association on copy
+          unit_number:      c.unit_number,
+          topic:            c.topic,
+          subtopics:        c.subtopics,
+          raw_text:         c.raw_text,
+        }))
+
+        const { error: chunkErr } = await adminSupabase
+          .from('syllabus_chunks')
+          .insert(chunkRows)
+
+        if (chunkErr) {
+          logger.error('[copy-department] chunk insert failed', { subject_id: newSubject.id, err: chunkErr.message })
+        } else {
+          chunksCopied += chunkRows.length
+        }
+      }
+    }
+
+    // ── Log to system_logs ─────────────────────────────────────────────────────
+    try {
+      await adminSupabase.from('system_logs').insert({
+        event_type: 'department_copied',
+        severity:   'info',
+        message:    `Copied ${subjectsCopied} subjects (${chunksCopied} chunks) from ${srcDeptRes.data.name} → ${tgtDeptRes.data.name}`,
+        metadata:   {
+          src_college_id, src_dept_id,
+          tgt_college_id, tgt_dept_id,
+          subjects_copied: subjectsCopied,
+          chunks_copied:   chunksCopied,
+          skipped:         srcSubjects.length - subjectsCopied,
+          performed_by:    user.id,
+        },
+      })
+    } catch {}
 
     return Response.json({
       success:         true,
-      subjects_copied: result?.subjects_copied ?? 0,
-      chunks_copied:   result?.chunks_copied   ?? 0,
-      src_dept_name:   srcDept.data.name,
-      tgt_dept_name:   tgtDept.data.name,
+      subjects_copied: subjectsCopied,
+      chunks_copied:   chunksCopied,
+      skipped:         srcSubjects.length - subjectsCopied,
+      src_dept_name:   srcDeptRes.data.name,
+      tgt_dept_name:   tgtDeptRes.data.name,
     })
+
   } catch (err) {
     logger.error('POST /api/super-admin/copy-department — unexpected', err)
-    return Response.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
+    return Response.json({ error: 'Internal server error: ' + err.message, code: 'INTERNAL_ERROR' }, { status: 500 })
   }
 }
