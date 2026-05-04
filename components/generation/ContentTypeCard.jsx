@@ -46,7 +46,7 @@ const META = {
   },
   question_bank: {
     title:       'Question Bank',
-    description: 'SCTEVT-style 2, 5, and 10-mark questions organised by section for exam preparation.',
+    description: 'SCTE & VT-style 2, 5, and 10-mark questions organised by section for exam preparation.',
     tag:         'Exam prep',
   },
   test_plan: {

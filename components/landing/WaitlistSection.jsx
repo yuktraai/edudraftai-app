@@ -46,7 +46,7 @@ export function WaitlistSection() {
             <div className="lp-kicker">Early Access</div>
             <h2>Be first in when we launch.</h2>
             <p>
-              EduDraftAI launches <strong>July 7, 2026</strong> for SCTEVT Odisha diploma colleges.
+              EduDraftAI launches <strong>July 7, 2026</strong> for SCTE & VT Odisha diploma colleges.
               Join the waitlist for early access, launch discounts, and setup support.
             </p>
             <ul className="lp-waitlist-perks">

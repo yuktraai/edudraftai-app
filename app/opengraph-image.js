@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const alt         = 'EduDraftAI — AI Teaching Content for SCTEVT Diploma Colleges'
+export const alt         = 'EduDraftAI — AI Teaching Content for SCTE & VT Diploma Colleges'
 export const size        = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -42,7 +42,7 @@ export default function OGImage() {
 
         {/* Headline — single text child, no flex needed */}
         <div style={{ fontSize: 52, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.2, marginBottom: 24, maxWidth: 900 }}>
-          AI-Powered Teaching Content for SCTEVT Diploma Colleges
+          AI-Powered Teaching Content for SCTE & VT Diploma Colleges
         </div>
 
         {/* Sub-headline — single text child, avoid HTML entities */}

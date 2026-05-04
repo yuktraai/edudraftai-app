@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
               EduDraftAI is a product of <strong>Yuktra AI</strong> (sole proprietorship), operated at{' '}
               <a href="https://edudraftai.com" className="text-teal hover:underline">edudraftai.com</a>.
               We provide AI-powered content drafting tools for diploma college lecturers affiliated with
-              SCTEVT Odisha institutions. For any privacy-related queries, contact us at{' '}
+              SCTE & VT Odisha institutions. For any privacy-related queries, contact us at{' '}
               <a href="mailto:info@yuktraai.com" className="text-teal hover:underline">info@yuktraai.com</a>.
             </p>
           </section>

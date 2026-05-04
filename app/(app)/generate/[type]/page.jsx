@@ -20,7 +20,7 @@ const TYPE_META = {
   },
   question_bank: {
     title:       'Question Bank',
-    description: 'SCTEVT-format 2, 5, and 10-mark questions.',
+    description: 'SCTE & VT-format 2, 5, and 10-mark questions.',
   },
   test_plan: {
     title:       'Internal Test',

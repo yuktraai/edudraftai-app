@@ -144,7 +144,7 @@ export default function CollegePilotPage() {
           </h1>
           <p className="text-slate-300 text-base max-w-xl mx-auto leading-relaxed">
             Fill in your college details and we'll onboard you to EduDraftAI — free during the pilot phase.
-            All SCTEVT Odisha diploma colleges are eligible.
+            All SCTE & VT Odisha diploma colleges are eligible.
           </p>
         </div>
       </div>

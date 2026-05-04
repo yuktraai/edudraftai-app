@@ -126,7 +126,7 @@ export default async function JobDetailPage({ params }) {
               <h2 className="text-base font-bold text-navy mb-2">About Yuktra AI</h2>
               <p className="text-sm text-muted leading-relaxed">
                 Yuktra AI is a startup building AI-powered tools for education in India. Our flagship product,
-                EduDraftAI, helps SCTEVT diploma college lecturers generate high-quality teaching content —
+                EduDraftAI, helps SCTE & VT diploma college lecturers generate high-quality teaching content —
                 lesson notes, MCQ banks, question papers, and test plans — in minutes instead of hours.
                 We're a small team with big ambitions, and every person makes a real impact.
               </p>

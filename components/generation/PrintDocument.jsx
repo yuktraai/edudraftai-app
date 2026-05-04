@@ -69,7 +69,7 @@ function PrintHeader({ college, subjectInfo, generation }) {
         )}
         <div className="print-college-info">
           <div className="print-college-name">{college.name}</div>
-          <div className="print-college-sub">SCTEVT Affiliated Polytechnic · Odisha</div>
+          <div className="print-college-sub">SCTE & VT Affiliated Polytechnic · Odisha</div>
         </div>
       </div>
 

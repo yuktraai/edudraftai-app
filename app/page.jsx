@@ -4,15 +4,15 @@ import { CountdownTimer }   from '@/components/landing/CountdownTimer'
 import { WaitlistSection }  from '@/components/landing/WaitlistSection'
 
 export const metadata = {
-  title: 'EduDraftAI — AI Lesson Notes, MCQ & Question Bank Generator for SCTEVT Colleges',
+  title: 'EduDraftAI — AI Lesson Notes, MCQ & Question Bank Generator for SCTE & VT Colleges',
   description:
-    'Generate SCTEVT syllabus-locked lesson notes, MCQ banks, question banks and internal test papers in seconds. AI-powered teaching content platform for Odisha diploma engineering colleges. Free trial available.',
+    'Generate SCTE & VT syllabus-locked lesson notes, MCQ banks, question banks and internal test papers in seconds. AI-powered teaching content platform for Odisha diploma engineering colleges. Free trial available.',
   alternates: {
     canonical: 'https://edudraftai.com',
   },
   openGraph: {
-    title:       'EduDraftAI — AI Teaching Content for SCTEVT Diploma Colleges',
-    description: 'Generate lesson notes, MCQ banks, question banks and test papers instantly. Built for SCTEVT Odisha diploma engineering lecturers.',
+    title:       'EduDraftAI — AI Teaching Content for SCTE & VT Diploma Colleges',
+    description: 'Generate lesson notes, MCQ banks, question banks and test papers instantly. Built for SCTE & VT Odisha diploma engineering lecturers.',
     url:         'https://edudraftai.com',
     type:        'website',
   },
@@ -411,7 +411,7 @@ export default function LandingPage() {
                 <span className="lp-brand-text">EduDraft<span>AI</span></span>
               </a>
               <p className="lp-footer-tagline">
-                AI-powered teaching content for SCTEVT diploma engineering colleges in Odisha.
+                AI-powered teaching content for SCTE & VT diploma engineering colleges in Odisha.
                 Generate lesson notes, MCQ banks, question papers and test plans — instantly.
               </p>
               <p className="lp-footer-by">
@@ -490,7 +490,7 @@ export default function LandingPage() {
               </ul>
               <h4 className="lp-footer-col-title" style={{ marginTop: '28px' }}>Built For</h4>
               <ul className="lp-footer-links">
-                <li><span>SCTEVT Odisha Colleges</span></li>
+                <li><span>SCTE & VT Odisha Colleges</span></li>
                 <li><span>Diploma Engineering</span></li>
                 <li><span>Lecturers &amp; HODs</span></li>
               </ul>
@@ -528,7 +528,7 @@ export default function LandingPage() {
           <div className="lp-footer-bottom">
             <p>© {new Date().getFullYear()} Yuktra AI. All rights reserved.</p>
             <p className="lp-footer-bottom-right">
-              Empowering SCTEVT diploma colleges with AI — Made in Odisha 🇮🇳
+              Empowering SCTE & VT diploma colleges with AI — Made in Odisha 🇮🇳
             </p>
           </div>
 

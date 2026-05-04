@@ -216,7 +216,7 @@ You've been invited to EduDraftAI
                 You've been invited!
               </h1>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4A5568;">
-                Your college admin has invited you to <strong>EduDraftAI</strong> — the AI-powered teaching content platform for SCTEVT Odisha diploma colleges.
+                Your college admin has invited you to <strong>EduDraftAI</strong> — the AI-powered teaching content platform for SCTE & VT Odisha diploma colleges.
               </p>
               <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#4A5568;">
                 Click the button below to accept the invitation and set up your account.
@@ -249,7 +249,7 @@ You've been invited to EduDraftAI
                     </p>
                     <p style="margin:0 0 6px;font-size:13px;color:#4A5568;">📝 &nbsp;Generate syllabus-locked lesson notes</p>
                     <p style="margin:0 0 6px;font-size:13px;color:#4A5568;">✅ &nbsp;Create MCQ banks and question papers</p>
-                    <p style="margin:0 0 6px;font-size:13px;color:#4A5568;">🗓️ &nbsp;Build SCTEVT-pattern internal test plans</p>
+                    <p style="margin:0 0 6px;font-size:13px;color:#4A5568;">🗓️ &nbsp;Build SCTE & VT-pattern internal test plans</p>
                     <p style="margin:0;font-size:13px;color:#4A5568;">📄 &nbsp;Export to Word and print instantly</p>
                   </td>
                 </tr>
