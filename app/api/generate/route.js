@@ -13,11 +13,21 @@ import { checkRefineInstruction } from '@/lib/ai/refine-guard'
 import { maybeRewardReferral } from '@/lib/referral'
 import { embedText } from '@/lib/rag/embedder'
 import { queryContext } from '@/lib/rag/pinecone'
+import { validateOutput } from '@/lib/ai/validate-output'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 
 const OPENAI_MODEL    = 'gpt-4o'
 const ANTHROPIC_MODEL = 'claude-3-5-sonnet-20241022'
+
+// 48.1 — Per-content-type temperature settings
+const TEMPERATURES = {
+  lesson_notes:  0.4,
+  mcq_bank:      0.2,
+  question_bank: 0.2,
+  exam_paper:    0.2,
+  test_plan:     0.5,
+}
 
 const openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -253,6 +263,33 @@ export async function POST(request) {
     }
   }
 
+  // ── 48.10 — Inject prior generation fingerprint to prevent repeated content ─
+  let exclusionBlock = ''
+  if (forceGenerate && chunk_id) {
+    const { data: prevGen } = await adminSupabase
+      .from('content_generations')
+      .select('raw_output')
+      .eq('user_id', user.id)
+      .eq('subject_id', subject_id)
+      .eq('chunk_id', chunk_id)
+      .eq('content_type', content_type)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (prevGen?.raw_output) {
+      const prevItems = prevGen.raw_output
+        .match(/^Q\d+\..{0,120}/gm)
+        ?.slice(0, 20)
+        ?.join('\n') ?? ''
+
+      if (prevItems) {
+        exclusionBlock = `\n\nIMPORTANT — DO NOT REPEAT: The following questions/items were already generated for this topic. Generate entirely new content covering different angles, examples, or aspects of the same subtopics:\n${prevItems}\n`
+      }
+    }
+  }
+
   // ── 7. Build prompt params (merge chunk context + user params) ────────────
   // Phase 10C: TopicPicker now emits multi-selected subtopics as an array.
   // params.subtopics = the user's selection (1–5 items).
@@ -294,9 +331,10 @@ export async function POST(request) {
   let messagesWithRag = parentGeneration && regeneration_instruction
     ? buildRegenerationPrompt({
         content_type,
-        prompt_params: parentGeneration.prompt_params,
-        raw_output:    parentGeneration.raw_output,
-        instruction:   regeneration_instruction,
+        prompt_params:  parentGeneration.prompt_params,
+        raw_output:     parentGeneration.raw_output,
+        instruction:    regeneration_instruction,
+        referenceBooks,
       })
     : buildPrompt(content_type, promptParams)
 
@@ -311,13 +349,14 @@ export async function POST(request) {
 
         const ragBlock = [
           '',
-          '--- REFERENCE MATERIAL (use as context, do not copy verbatim) ---',
-          'The following excerpts are from approved reference materials for this subject.',
-          'Use them to ensure accuracy and alignment with the prescribed curriculum.',
-          'Do NOT reproduce these passages directly. Synthesize and teach from them.',
+          '--- SCTEVT SYLLABUS REFERENCE (authoritative source) ---',
+          'The following excerpts are from the approved SCTEVT curriculum and reference materials for this subject.',
+          'TREAT THESE AS YOUR PRIMARY SOURCE for definitions, formulae, concept scope, and terminology.',
+          'Expand on them with examples and structured explanations — but do NOT contradict, deviate from,',
+          'or rephrase away from the concepts and terms stated here.',
           '',
           ...ragResults.map((r, i) => `[${i + 1}] ${r.text}`),
-          '--- END REFERENCE MATERIAL ---',
+          '--- END SYLLABUS REFERENCE ---',
         ].join('\n')
 
         // Append RAG block to the last user message
@@ -331,6 +370,15 @@ export async function POST(request) {
       // Non-fatal — log and continue without RAG context
       logger.error('[generate] RAG retrieval failed, continuing without context', ragErr.message)
     }
+  }
+
+  // 48.10 — Append exclusion block to last user message (after RAG, before AI call)
+  if (exclusionBlock) {
+    messagesWithRag = messagesWithRag.map((msg, i) =>
+      i === messagesWithRag.length - 1 && msg.role === 'user'
+        ? { ...msg, content: msg.content + exclusionBlock }
+        : msg
+    )
   }
 
   const messages = messagesWithRag
@@ -393,10 +441,11 @@ export async function POST(request) {
       // ── OpenAI primary ──────────────────────────────────────────────────
       try {
         const stream = await openai.chat.completions.create({
-          model:    OPENAI_MODEL,
+          model:       OPENAI_MODEL,
           messages,
-          stream:   true,
-          max_tokens: 8192,
+          stream:      true,
+          max_tokens:  8192,
+          temperature: TEMPERATURES[content_type] ?? 0.3,
         })
         for await (const chunk of stream) {
           const text = chunk.choices[0]?.delta?.content ?? ''
@@ -416,10 +465,11 @@ export async function POST(request) {
           const user   = messages.find(m => m.role === 'user')?.content ?? ''
 
           const anthropicStream = anthropic.messages.stream({
-            model:      ANTHROPIC_MODEL,
-            max_tokens: 8192,
+            model:       ANTHROPIC_MODEL,
+            max_tokens:  8192,
             system,
-            messages:   [{ role: 'user', content: user }],
+            messages:    [{ role: 'user', content: user }],
+            temperature: TEMPERATURES[content_type] ?? 0.3,
           })
 
           for await (const event of anthropicStream) {
@@ -440,6 +490,12 @@ export async function POST(request) {
       // ── 10. Save completed output + deduct credit ────────────────────────
       const ms = Date.now() - startTime
 
+      // 48.7 — Validate output structure
+      const validationFlags = validateOutput(content_type, fullOutput, promptParams)
+      if (validationFlags.length > 0) {
+        await writer.write(encoder.encode(`\n\n[GENERATION_WARNING]: ${validationFlags.join(', ')}`))
+      }
+
       // Auto-tags: content_type label + subject name
       const autoTags = [content_type, subject.name].filter(Boolean)
 
@@ -453,6 +509,12 @@ export async function POST(request) {
           tags:            autoTags,
           current_version: 1,
           updated_at:      new Date().toISOString(),
+          metadata:        {
+            rag_chunks_used: ragChunksUsed,
+            is_demo: isDemo,
+            ...(regeneration_instruction ? { is_regeneration: true, regeneration_instruction } : {}),
+            validation_flags: validationFlags,
+          },
         })
         .eq('id', generationId)
 
