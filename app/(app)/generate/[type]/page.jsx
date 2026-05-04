@@ -112,9 +112,11 @@ function QuestionBankParams({ params, onChange }) {
 }
 
 function ExamPaperParams({ params, onChange }) {
+  // Official SCTE&VT Odisha pattern: 80 marks, 3 hrs, same structure for both types
+  // Q.1: All 10 × 2 = 20 | Q.2: Any 6 of 7 × 5 = 30 | Q.3–Q.7: attempt any 3 × 10 = 30
   const EXAM_TYPES = [
-    { value: 'mid_semester',  label: 'Mid-Semester',  marks: 50,  duration: 90,  pattern: '10×1M + 5×4M + 1×10M = 50 Marks' },
-    { value: 'end_semester',  label: 'End-Semester',  marks: 100, duration: 180, pattern: '10×1M + 5×6M + 2×10M = 100 Marks' },
+    { value: 'end_semester', label: 'End-Semester', marks: 80, duration: 180, pattern: 'Q.1(2×10) + Q.2(6×5) + Q.3–Q.7(3×10) = 80 Marks' },
+    { value: 'mid_semester', label: 'Mid-Semester', marks: 80, duration: 180, pattern: 'Q.1(2×10) + Q.2(6×5) + Q.3–Q.7(3×10) = 80 Marks' },
   ]
 
   function setExamType(et) {
@@ -122,7 +124,7 @@ function ExamPaperParams({ params, onChange }) {
     onChange({
       ...params,
       exam_type:     et,
-      total_marks:   found?.marks    ?? 100,
+      total_marks:   found?.marks    ?? 80,
       duration_mins: found?.duration ?? 180,
     })
   }
@@ -154,12 +156,20 @@ function ExamPaperParams({ params, onChange }) {
         </div>
       </div>
 
+      {/* Info banner showing the exact SCTE&VT pattern */}
+      <div className="bg-teal-light border border-teal/30 rounded-xl px-4 py-3 text-xs text-teal space-y-0.5">
+        <p className="font-semibold text-navy">SCTE&VT Official Pattern (80 Marks / 3 Hrs)</p>
+        <p className="text-muted">Q.1 — All 10 sub-parts (a–j), 2 marks each = 20</p>
+        <p className="text-muted">Q.2 — Any 6 of 7 sub-parts (a–g), 5 marks each = 30</p>
+        <p className="text-muted">Q.3 to Q.7 — Long/Numerical, attempt any 3 × 10 = 30</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-muted mb-1">Total Marks</label>
           <input
             type="number"
-            value={params.total_marks ?? selected?.marks ?? 100}
+            value={params.total_marks ?? selected?.marks ?? 80}
             onChange={e => onChange({ ...params, total_marks: Number(e.target.value) })}
             className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
           />
@@ -210,7 +220,7 @@ const PARAM_DEFAULTS = {
   mcq_bank:      { count: 10, difficulty: 'intermediate' },
   question_bank: { marks_2: 5, marks_5: 4, marks_10: 2 },
   test_plan:     { total_marks: 30, duration_mins: 60 },
-  exam_paper:    { exam_type: 'end_semester', total_marks: 100, duration_mins: 180 },
+  exam_paper:    { exam_type: 'end_semester', total_marks: 80, duration_mins: 180 },
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
