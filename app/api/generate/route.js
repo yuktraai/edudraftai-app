@@ -9,6 +9,7 @@ import { buildQuestionBankPrompt } from '@/lib/ai/prompts/question-bank'
 import { buildTestPlanPrompt } from '@/lib/ai/prompts/test-plan'
 import { buildExamPaperPrompt } from '@/lib/ai/prompts/exam-paper'
 import { buildRegenerationPrompt } from '@/lib/ai/prompts/regenerate'
+import { checkRefineInstruction } from '@/lib/ai/refine-guard'
 import { maybeRewardReferral } from '@/lib/referral'
 import { embedText } from '@/lib/rag/embedder'
 import { queryContext } from '@/lib/rag/pinecone'
@@ -112,6 +113,36 @@ export async function POST(request) {
       .eq('user_id', user.id)
       .single()
     parentGeneration = pg
+  }
+
+  // ── 3c. Refine instruction guard (LLM intent classification) ─────────────
+  // Only runs on regeneration requests. Classifies whether the instruction is
+  // a genuine content-refinement request vs. off-topic/injection attempt.
+  if (regeneration_instruction) {
+    // Fetch subject name for context — use a lightweight query just for the name.
+    // Full subject auth happens in step 4; this is only for the guard prompt.
+    const { data: subjectHint } = await adminSupabase
+      .from('subjects')
+      .select('name')
+      .eq('id', subject_id)
+      .single()
+
+    const guard = await checkRefineInstruction(
+      regeneration_instruction,
+      content_type,
+      subjectHint?.name ?? 'the subject',
+    )
+
+    if (!guard.valid) {
+      return Response.json(
+        {
+          error: `Your refinement instruction doesn't appear to be related to improving this content. Please describe what you'd like to change — for example: "Make the questions harder" or "Add more examples on subtopic 2".`,
+          code:  'INVALID_REFINE_INSTRUCTION',
+          reason: guard.reason,
+        },
+        { status: 422 },
+      )
+    }
   }
 
   // ── 4. Verify subject belongs to user's college ───────────────────────────
