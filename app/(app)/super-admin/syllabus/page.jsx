@@ -64,11 +64,10 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
     { data: colleges },
     { data: departments },
     { data: syllabusFiles },
-    { data: chunks },
   ] = await Promise.all([
     adminSupabase
       .from('subjects')
-      .select('id, name, code, semester, is_active, college_id, department_id')
+      .select('id, name, code, semester, is_active, college_id, department_id, syllabus_chunks(count)')
       .order('semester')
       .order('name'),
 
@@ -84,10 +83,6 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
       .from('syllabus_files')
       .select('id, subject_id, parse_status, created_at, file_name')
       .order('created_at', { ascending: false }),
-
-    adminSupabase
-      .from('syllabus_chunks')
-      .select('id, subject_id'),
   ])
 
   // Build lookup maps
@@ -99,9 +94,10 @@ export default async function SuperAdminSyllabusPage({ searchParams }) {
     if (!latestFileBySubject[f.subject_id]) latestFileBySubject[f.subject_id] = f
   }
 
+  // Use embedded count from the subjects query — avoids the 1000-row cap on a separate chunks fetch
   const chunkCountBySubject = {}
-  for (const c of chunks ?? []) {
-    chunkCountBySubject[c.subject_id] = (chunkCountBySubject[c.subject_id] ?? 0) + 1
+  for (const s of subjects ?? []) {
+    chunkCountBySubject[s.id] = Number(s.syllabus_chunks?.[0]?.count ?? 0)
   }
 
   // Helper: a subject is considered "completed" if either:
