@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { FeedbackBar } from './FeedbackBar'
 import { MathContent } from '@/components/ui/MathContent'
+import { TestPlanRenderer } from './TestPlanRenderer'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { toPlainText } from '@/lib/export/plainText'
@@ -196,6 +197,8 @@ export function OutputViewer({ content, isStreaming, generationId, contentType, 
                 {content}
                 <span className="inline-block w-0.5 h-4 bg-teal animate-pulse ml-0.5 align-middle" />
               </pre>
+            ) : contentType === 'test_plan' ? (
+              displayContent && <TestPlanRenderer content={displayContent} />
             ) : (
               displayContent && <MathContent content={displayContent} />
             )}

@@ -83,6 +83,14 @@ export async function POST(request) {
   if (!['lecturer', 'college_admin', 'super_admin'].includes(profile.role))
     return Response.json({ error: 'Forbidden' }, { status: 403 })
 
+  // ── 1b. Fetch college name for prompt injection (test_plan uses it in header) ──
+  const { data: collegeRecord } = await adminSupabase
+    .from('colleges')
+    .select('name')
+    .eq('id', profile.college_id)
+    .single()
+  const collegeName = collegeRecord?.name ?? ''
+
   // ── 2. Rate limit check ───────────────────────────────────────────────────
   const rateCheck = checkRateLimit(user.id)
   if (!rateCheck.allowed) {
@@ -271,6 +279,7 @@ export async function POST(request) {
   const promptParams = {
     subject_name:   subject.name,
     semester:       subject.semester,
+    college_name:   collegeName,
     topic:          chunk?.topic ?? params.topic ?? subject.name,
     subtopics:      selectedSubtopics,
     referenceBooks,

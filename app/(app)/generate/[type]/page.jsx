@@ -28,7 +28,7 @@ const TYPE_META = {
   },
   exam_paper: {
     title:       'Exam Paper',
-    description: 'SCTE&VT-pattern examination paper with Group A, B, C.',
+    description: 'Full SCTE&VT 80-mark pattern — Q.1 (Very Short), Q.2 (Short), Q.3–Q.7 (Long). Right-margin marks. Answer key included.',
   },
 }
 

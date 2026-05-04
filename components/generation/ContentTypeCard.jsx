@@ -56,7 +56,7 @@ const META = {
   },
   exam_paper: {
     title:       'Exam Paper',
-    description: 'Full SCTE&VT pattern exam — Group A (MCQ), Group B (Short), Group C (Long). Print-ready.',
+    description: 'Full SCTE&VT 80-mark pattern — Q.1 (Very Short ×10), Q.2 (Short ×7, attempt 6), Q.3–Q.7 (Long, attempt 3). Right-margin marks. Answer key included.',
     tag:         'Exam',
   },
 }

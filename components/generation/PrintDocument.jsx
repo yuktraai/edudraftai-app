@@ -216,12 +216,11 @@ function ExamPaperContent({ text, generation, subjectInfo, showKey }) {
       {/* Instructions box */}
       <div className="exam-instructions">
         <div className="exam-instr-row">
-          <span><strong>Time:</strong> {Math.floor(duration / 60)} Hour{duration > 60 ? 's' : ''}</span>
           <span><strong>Full Marks:</strong> {totalMarks}</span>
-          <span><strong>All questions are compulsory in Group A</strong></span>
+          <span><strong>Time:</strong> {Math.floor(duration / 60)} Hour{duration > 60 ? 's' : ''}</span>
         </div>
         <div className="exam-instr-note">
-          <strong>Instructions:</strong> Answer all questions in Group A. Attempt any 5 from Group B. Attempt any 2 from Group C. Start each group on a new page.
+          <strong>Instructions:</strong> Answer any five Questions including Q No.1 &amp; 2. Figures in the right hand margin indicate marks.
         </div>
         <div className="exam-roll">Roll No: ___________________________</div>
       </div>
@@ -389,7 +388,8 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
         .print-footer-right  { flex: 1; text-align: right; }
         .print-footer-sep { margin-left: 2px; }
 
-        /* CSS counter for page numbers */
+        /* CSS counter for page numbers — reset to 0 so first @page increment gives 1 */
+        body { counter-reset: page; }
         @page { counter-increment: page; }
         .print-page-num::after { content: "Page " counter(page); }
 
