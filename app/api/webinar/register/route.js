@@ -57,9 +57,14 @@ function buildConfirmationEmail({ name, webinar, feedbackToken }) {
     <li>Lesson notes and question paper creation in real time</li>
     <li>Q&A — ask anything about the product</li>
   </ul>
-  <p style="color:#718096;font-size:13px;margin:0;padding:12px 16px;background:#f8fafc;border-radius:8px">
+  <p style="color:#718096;font-size:13px;margin:0 0 20px;padding:12px 16px;background:#f8fafc;border-radius:8px">
     💬 During the demo, we'll share a personalised feedback link — only registered attendees can submit it.
   </p>
+  <table width="100%" cellpadding="16" cellspacing="0" style="background:#f0fdf4;border-radius:12px;border:1px solid #86efac"><tr><td>
+    <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#16a34a">📱 Join our WhatsApp Community</p>
+    <p style="margin:0 0 12px;font-size:13px;color:#4a5568">Get product updates, tips, and announcements directly on WhatsApp.</p>
+    <a href="https://chat.whatsapp.com/In6zM8mLtJ03AFEcVFE5br?mode=gi_t" style="display:inline-block;background:#25D366;color:#ffffff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">Join WhatsApp Group →</a>
+  </td></tr></table>
 </td></tr>
 <tr><td style="padding:20px 32px;border-top:1px solid #E2E8F0;background:#f8fafc">
   <p style="margin:0;font-size:12px;color:#a0aec0;text-align:center">

@@ -41,6 +41,16 @@ const TYPES = [
       </svg>
     ),
   },
+  {
+    key:  'exam_paper',
+    label: 'Exam Paper',
+    href:  '/generate/exam_paper',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
+      </svg>
+    ),
+  },
 ]
 
 export function ContentBreakdown({ byType, total }) {
@@ -48,7 +58,7 @@ export function ContentBreakdown({ byType, total }) {
     <div className="bg-surface border border-border rounded-2xl p-5"
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <h2 className="text-sm font-bold text-navy mb-4">Content Breakdown</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {TYPES.map(({ key, label, href, icon }) => {
           const count = byType[key] ?? 0
           const pct   = total > 0 ? Math.round((count / total) * 100) : 0

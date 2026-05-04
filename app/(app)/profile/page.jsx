@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation'
 import { TemplateManager } from '@/components/profile/TemplateManager'
 import { GenerationDefaults } from '@/components/profile/GenerationDefaults'
 import { NotificationPreferences } from '@/components/profile/NotificationPreferences'
-import { ReferralSection } from '@/components/profile/ReferralSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,8 +57,6 @@ export default async function ProfilePage() {
         <NotificationPreferences initialPreferences={profile?.preferences ?? {}} />
       </div>
 
-      {/* Phase 44 — Referral Program */}
-      <ReferralSection />
     </div>
   )
 }

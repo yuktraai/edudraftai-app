@@ -50,7 +50,12 @@ export async function POST(request) {
                 <h2 style="color:#0D1F3C;margin:0 0 16px">Hi ${reg.name}, here's your meeting link!</h2>
                 <p style="color:#718096;margin:0 0 24px">Your Google Meet link for tonight's EduDraftAI demo:</p>
                 <a href="${webinar.meet_link}" style="display:inline-block;background:#00B4A6;color:#fff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px">Join the Meeting →</a>
-                <p style="color:#718096;font-size:13px;margin:24px 0 0">Event: ${webinar.title} · ${webinar.time_ist} IST</p>
+                <p style="color:#718096;font-size:13px;margin:24px 0 20px">Event: ${webinar.title} · ${webinar.time_ist} IST</p>
+                <table width="100%" cellpadding="14" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #86efac"><tr><td>
+                  <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#16a34a">📱 Join our WhatsApp Community</p>
+                  <p style="margin:0 0 10px;font-size:13px;color:#4a5568">Stay connected for updates, tips, and announcements.</p>
+                  <a href="https://chat.whatsapp.com/In6zM8mLtJ03AFEcVFE5br?mode=gi_t" style="display:inline-block;background:#25D366;color:#ffffff;padding:9px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Join WhatsApp Group →</a>
+                </td></tr></table>
               </td></tr>
               <tr><td style="padding:16px 32px;border-top:1px solid #E2E8F0;background:#f8fafc">
                 <p style="margin:0;font-size:12px;color:#a0aec0;text-align:center">edudraftai.com · info@yuktraai.com</p>
