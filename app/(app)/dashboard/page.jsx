@@ -93,7 +93,7 @@ export default async function DashboardPage() {
   const weekTrend = thisWeekCount - lastWeekCount
 
   // Content type breakdown
-  const byType = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0 }
+  const byType = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0 }
   allGens.forEach(g => { if (byType[g.content_type] !== undefined) byType[g.content_type]++ })
 
   // Trend vs last week per content type (for stat card label)
