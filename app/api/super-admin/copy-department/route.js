@@ -70,21 +70,25 @@ export async function POST(request) {
       })
     }
 
-    // ── Fetch existing subject codes in target college (to detect duplicates) ──
-    const { data: existingSubjects } = await adminSupabase
+    // ── Fetch existing subject codes in target DEPARTMENT only ───────────────
+    // (UNIQUE constraint is college-level, but duplicate check is dept-level so
+    //  subjects that exist in OTHER departments don't block this copy)
+    const { data: existingInDept } = await adminSupabase
       .from('subjects')
       .select('code')
       .eq('college_id', tgt_college_id)
+      .eq('department_id', tgt_dept_id)
 
-    const existingCodes = new Set((existingSubjects ?? []).map(s => s.code?.trim().toUpperCase()))
+    const existingDeptCodes = new Set((existingInDept ?? []).map(s => s.code?.trim().toUpperCase()))
 
-    // ── Copy subjects that don't already exist in target ──────────────────────
+    // ── Copy subjects that don't already exist in target DEPARTMENT ───────────
     const subjectsToCopy = srcSubjects.filter(
-      s => !existingCodes.has(s.code?.trim().toUpperCase())
+      s => !existingDeptCodes.has(s.code?.trim().toUpperCase())
     )
 
     let subjectsCopied = 0
     let chunksCopied   = 0
+    let conflicts      = 0   // codes that exist in another dept of target college
 
     for (const src of subjectsToCopy) {
       // Insert new subject into target college / department
@@ -104,8 +108,13 @@ export async function POST(request) {
         .single()
 
       if (insertErr) {
-        // Likely a unique constraint on (college_id, code) from a race condition — skip
-        logger.error('[copy-department] subject insert failed', { code: src.code, err: insertErr.message })
+        // unique_violation = code exists in a different dept of the same college
+        if (insertErr.code === '23505') {
+          conflicts++
+          logger.error('[copy-department] code conflict in another dept', { code: src.code })
+        } else {
+          logger.error('[copy-department] subject insert failed', { code: src.code, err: insertErr.message })
+        }
         continue
       }
 
@@ -152,19 +161,21 @@ export async function POST(request) {
           tgt_college_id, tgt_dept_id,
           subjects_copied: subjectsCopied,
           chunks_copied:   chunksCopied,
-          skipped:         srcSubjects.length - subjectsCopied,
+          skipped_dept:    existingDeptCodes.size,
+          skipped_conflict: conflicts,
           performed_by:    user.id,
         },
       })
     } catch {}
 
     return Response.json({
-      success:         true,
-      subjects_copied: subjectsCopied,
-      chunks_copied:   chunksCopied,
-      skipped:         srcSubjects.length - subjectsCopied,
-      src_dept_name:   srcDeptRes.data.name,
-      tgt_dept_name:   tgtDeptRes.data.name,
+      success:          true,
+      subjects_copied:  subjectsCopied,
+      chunks_copied:    chunksCopied,
+      skipped:          existingDeptCodes.size,
+      conflicts:        conflicts,
+      src_dept_name:    srcDeptRes.data.name,
+      tgt_dept_name:    tgtDeptRes.data.name,
     })
 
   } catch (err) {

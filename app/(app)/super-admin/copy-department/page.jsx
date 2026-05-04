@@ -200,7 +200,7 @@ export default function CopyDepartmentPage() {
             </div>
           </div>
           <p className="text-xs text-muted mt-3">
-            ⚠️ Existing subjects with the same code in the target college will be skipped. Syllabus chunks for new subjects will be copied. This action cannot be undone.
+            ⚠️ Subjects already in the target department will be skipped. Subjects with the same code in a different department of the target college will also be skipped. This action cannot be undone.
           </p>
         </div>
       )}
@@ -222,6 +222,16 @@ export default function CopyDepartmentPage() {
             <strong>{result.chunks_copied}</strong> syllabus chunk{result.chunks_copied !== 1 ? 's' : ''} copied
             from <strong>{result.src_dept_name}</strong> → <strong>{result.tgt_dept_name}</strong>.
           </p>
+          {result.skipped > 0 && (
+            <p className="text-muted text-xs mt-1">
+              {result.skipped} subject{result.skipped !== 1 ? 's' : ''} skipped — already exist in target department.
+            </p>
+          )}
+          {result.conflicts > 0 && (
+            <p className="text-warning text-xs mt-1">
+              ⚠️ {result.conflicts} subject{result.conflicts !== 1 ? 's' : ''} could not be copied — same subject code already exists in a different department of the target college.
+            </p>
+          )}
         </div>
       )}
 
