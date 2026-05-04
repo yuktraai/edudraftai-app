@@ -322,17 +322,215 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
   )
 }
 
+// ── Exam Paper HTML builder ────────────────────────────────────────────────────
+
+/**
+ * Extract trailing marks notation from a line.
+ * Handles: "... 2 x 10", "... 6 x 5", "... 10" (after ≥2 spaces)
+ */
+function extractTrailingMarks(str) {
+  // "N x M" or "N × M" at end after whitespace
+  const m1 = str.match(/^(.*?)\s{2,}(\d+\s*[x×]\s*\d+)\s*$/)
+  if (m1) return { text: m1[1].trim(), marks: m1[2].replace(/\s*[x×]\s*/g, ' × ') }
+  // Single number at end after ≥2 spaces (must be a plausible marks value 2–100)
+  const m2 = str.match(/^(.*?)\s{2,}(\d+)\s*$/)
+  if (m2 && parseInt(m2[2]) >= 2 && parseInt(m2[2]) <= 100)
+    return { text: m2[1].trim(), marks: m2[2] }
+  // Inline [N marks] or [N] fallback
+  const m3 = str.match(/^(.*?)\s*\[(\d+)(?:\s*[Mm]arks?)?\]\s*$/)
+  if (m3) return { text: m3[1].trim(), marks: m3[2] }
+  return { text: str.trim(), marks: null }
+}
+
+/**
+ * Collect sub-parts (a. … j.) from lines starting at startIdx.
+ * Stops when a new main question line (2–7) or separator is found.
+ */
+function collectExamSubParts(lines, startIdx) {
+  const subs = []
+  let j = startIdx
+  while (j < lines.length) {
+    const raw = lines[j]
+    const ln  = raw.trim()
+    // Blank lines: keep scanning (AI often adds blank lines between sub-parts)
+    if (!ln) { j++; continue }
+    // Stop on separator or next main question
+    if (/^[═=─\-]{3,}$/.test(ln) || /^---/.test(ln)) { j++; break }
+    if (/^\s*[2-7][.\s]/.test(raw)) break
+    // Sub-part letter: "a. text", "b) text", "  a.  text"
+    const m = ln.match(/^([a-j])[.)]\s*(.+)/i)
+    if (m) { subs.push({ label: m[1].toLowerCase() + '.', text: m[2].trim() }); j++ }
+    else { j++ } // skip unrecognised lines inside sub-part block
+  }
+  return { subs, nextIdx: j }
+}
+
+/**
+ * Render the answer key block (everything after "--- ANSWER KEY ---").
+ */
+function buildAnswerKeyHtml(rawText) {
+  if (!rawText?.trim()) return ''
+  const lines = rawText.split('\n')
+  const out   = ['<div class="ep-answer-key page-break">']
+  out.push('<div class="ep-ak-title">Answer Key</div>')
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line || /^---/.test(line) || /^[═=]{3,}$/.test(line)) continue
+
+    // Section header: "Q.1 Answers…" / "Q.3 – Q.7 Outline…"
+    if (/^Q[.\s]?\d/i.test(line) && !/^([a-j])[.)]/i.test(line)) {
+      out.push(`<div class="ep-ak-section-title">${escHtml(line)}</div>`)
+      continue
+    }
+    // Sub-part answer: "a. answer text"
+    const spMatch = line.match(/^([a-j])[.)]\s*(.+)/i)
+    if (spMatch) {
+      out.push(`<div class="ep-ak-item"><strong>${escHtml(spMatch[1].toLowerCase())}.</strong> ${escHtml(spMatch[2])}</div>`)
+      continue
+    }
+    // Bullet / dash items
+    const bullet = line.match(/^[•\-\*]\s+(.+)/)
+    if (bullet) {
+      out.push(`<div class="ep-ak-item ep-ak-bullet">• ${escHtml(bullet[1])}</div>`)
+      continue
+    }
+    // Regular line — bold **text** markers
+    const boldified = escHtml(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    out.push(`<p class="ep-ak-text">${boldified}</p>`)
+  }
+  out.push('</div>')
+  return out.join('\n')
+}
+
+/**
+ * Main exam paper builder.
+ * - Strips the duplicate AI header block (everything before "1.")
+ * - Strips ═══ / ─── / --- separator lines
+ * - Renders Q1 group (header + indented a–j sub-parts)
+ * - Renders Q2 group (header + indented a–g sub-parts)
+ * - Renders Q3–Q7 as standalone long-question rows with right-margin marks
+ * - Optionally renders the answer key on a new page
+ */
+function buildExamPaperHtml(rawText) {
+  if (!rawText) return ''
+
+  // Split answer key
+  const DELIM    = '--- ANSWER KEY ---'
+  const delimIdx = rawText.indexOf(DELIM)
+  const qPart    = delimIdx !== -1 ? rawText.slice(0, delimIdx) : rawText
+  const akPart   = delimIdx !== -1 ? rawText.slice(delimIdx)    : ''
+
+  const lines = qPart.split('\n')
+  const parts = []
+  let i = 0
+
+  // Skip AI-generated header block — jump to the first "1." main question
+  while (i < lines.length && !/^\s*1[.\s]/.test(lines[i])) { i++ }
+
+  while (i < lines.length) {
+    const raw  = lines[i]
+    const line = raw.trim()
+
+    // Skip blank / separator lines
+    if (!line || /^[═=─\-]{3,}$/.test(line) || /^---/.test(line)) { i++; continue }
+
+    // ── Q1 group ──────────────────────────────────────────────────────────────
+    if (/^\s*1[.\s]/.test(raw)) {
+      const clean = line.replace(/^\s*1[.\s]\s*/, '')
+      const { text: label, marks } = extractTrailingMarks(clean)
+      i++
+      const { subs, nextIdx } = collectExamSubParts(lines, i)
+      i = nextIdx
+
+      let html =
+        `<div class="ep-q-group">` +
+        `<div class="ep-q-header">` +
+        `<span class="ep-q-num">1.</span>` +
+        `<span class="ep-q-header-text">${escHtml(label)}</span>` +
+        (marks ? `<span class="ep-q-marks">${escHtml(marks)}</span>` : '') +
+        `</div>`
+      if (subs.length) {
+        html += `<div class="ep-subparts">`
+        subs.forEach(s => {
+          html +=
+            `<div class="ep-subpart">` +
+            `<span class="ep-subpart-label">${escHtml(s.label)}</span>` +
+            `<span class="ep-subpart-text">${escHtml(s.text)}</span>` +
+            `</div>`
+        })
+        html += `</div>`
+      }
+      html += `</div>`
+      parts.push(html)
+      continue
+    }
+
+    // ── Q2 group ──────────────────────────────────────────────────────────────
+    if (/^\s*2[.\s]/.test(raw)) {
+      const clean = line.replace(/^\s*2[.\s]\s*/, '')
+      const { text: label, marks } = extractTrailingMarks(clean)
+      i++
+      const { subs, nextIdx } = collectExamSubParts(lines, i)
+      i = nextIdx
+
+      let html =
+        `<div class="ep-q-group">` +
+        `<div class="ep-q-header">` +
+        `<span class="ep-q-num">2.</span>` +
+        `<span class="ep-q-header-text">${escHtml(label)}</span>` +
+        (marks ? `<span class="ep-q-marks">${escHtml(marks)}</span>` : '') +
+        `</div>`
+      if (subs.length) {
+        html += `<div class="ep-subparts">`
+        subs.forEach(s => {
+          html +=
+            `<div class="ep-subpart">` +
+            `<span class="ep-subpart-label">${escHtml(s.label)}</span>` +
+            `<span class="ep-subpart-text">${escHtml(s.text)}</span>` +
+            `</div>`
+        })
+        html += `</div>`
+      }
+      html += `</div>`
+
+      // Visual divider before long questions
+      parts.push(html)
+      parts.push('<div class="ep-long-divider"></div>')
+      continue
+    }
+
+    // ── Q3–Q7 standalone long questions ───────────────────────────────────────
+    const longMatch = raw.match(/^\s*([3-7])\s+(.+)$/)
+    if (longMatch) {
+      const num = longMatch[1]
+      const { text, marks } = extractTrailingMarks(longMatch[2].trim())
+      parts.push(
+        `<div class="ep-long-q">` +
+        `<span class="ep-long-q-num">${escHtml(num)}</span>` +
+        `<span class="ep-long-q-text">${escHtml(text)}</span>` +
+        (marks ? `<span class="ep-long-q-marks">${escHtml(marks)}</span>` : '') +
+        `</div>`
+      )
+      i++
+      continue
+    }
+
+    i++
+  }
+
+  const questionsHtml = `<div class="ep-questions">${parts.join('\n')}</div>`
+  const akHtml        = akPart.trim() ? buildAnswerKeyHtml(akPart) : ''
+  return questionsHtml + akHtml
+}
+
 // ─── Exam Paper Content ───────────────────────────────────────────────────────
 
-function ExamPaperContent({ text, generation, subjectInfo, showKey }) {
-  const examType = generation.prompt_params?.exam_type ?? 'end_semester'
-  const totalMarks = generation.prompt_params?.total_marks ?? 100
-  const duration = generation.prompt_params?.duration_mins ?? 180
-
-  // Split questions from answer key using delimiter
-  const DELIM = '--- ANSWER KEY ---'
-  const delimIdx = text?.indexOf(DELIM) ?? -1
-  const questionsText = delimIdx !== -1 ? text.slice(0, delimIdx).trimEnd() : (text ?? '')
+function ExamPaperContent({ text, generation, subjectInfo }) {
+  const totalMarks = generation.prompt_params?.total_marks ?? 80
+  const duration   = generation.prompt_params?.duration_mins ?? 180
+  const hrs        = Math.floor(duration / 60)
+  const durationLabel = `${hrs} Hour${hrs !== 1 ? 's' : ''}`
 
   return (
     <div className="exam-paper">
@@ -340,19 +538,17 @@ function ExamPaperContent({ text, generation, subjectInfo, showKey }) {
       <div className="exam-instructions">
         <div className="exam-instr-row">
           <span><strong>Full Marks:</strong> {totalMarks}</span>
-          <span><strong>Time:</strong> {Math.floor(duration / 60)} Hour{duration > 60 ? 's' : ''}</span>
+          <span><strong>Time:</strong> {durationLabel}</span>
         </div>
         <div className="exam-instr-note">
-          <strong>Instructions:</strong> Answer any five Questions including Q No.1 &amp; 2. Figures in the right hand margin indicate marks.
+          <strong>Instructions:</strong> Answer any five Questions including Q No.1 &amp; 2.
+          Figures in the right hand margin indicate marks.
         </div>
         <div className="exam-roll">Roll No: ___________________________</div>
       </div>
 
-      {/* Questions */}
-      <div
-        className="print-qb"
-        dangerouslySetInnerHTML={{ __html: renderContent(questionsText) }}
-      />
+      {/* Questions + Answer Key */}
+      <div dangerouslySetInnerHTML={{ __html: buildExamPaperHtml(text ?? '') }} />
     </div>
   )
 }
@@ -545,10 +741,9 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
         .print-footer-right  { flex: 1; text-align: right; }
         .print-footer-sep { margin-left: 2px; }
 
-        /* CSS counter for page numbers — reset to 0 so first @page increment gives 1 */
-        body { counter-reset: page; }
-        @page { counter-increment: page; }
-        .print-page-num::after { content: "Page " counter(page); }
+        /* CSS page counter — use browser's native counter (starts at 1, no reset needed) */
+        @media screen { .print-page-num::after { content: ""; } }
+        @media print  { .print-page-num::after { content: "Page " counter(page); } }
 
         /* ── Toolbar (screen only) ── */
         .no-print-bar {
@@ -582,23 +777,92 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
 
         .page-break { page-break-before: always; }
 
-        /* ── Exam Paper ── */
+        /* ── Exam Paper — instructions box ── */
         .exam-instructions {
-          border: 1.5px solid #0D1F3C;
-          border-radius: 4px;
-          padding: 12px 16px;
-          margin-bottom: 24px;
-          font-size: 12px;
+          border: 1.5px solid #0D1F3C; border-radius: 4px;
+          padding: 12px 16px; margin-bottom: 24px; font-size: 12px;
         }
         .exam-instr-row {
-          display: flex;
-          justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 8px;
-          font-size: 12px;
+          display: flex; justify-content: space-between; gap: 16px;
+          margin-bottom: 8px; font-size: 12.5px; font-weight: 600;
         }
-        .exam-instr-note { margin-bottom: 8px; line-height: 1.6; }
-        .exam-roll { font-size: 12px; margin-top: 8px; }
+        .exam-instr-note { margin-bottom: 8px; line-height: 1.6; font-size: 12px; }
+        .exam-roll { font-size: 12px; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+
+        /* ── Exam Paper — question body ── */
+        .ep-questions { font-size: 12px; }
+
+        /* Q1 / Q2 group */
+        .ep-q-group { margin: 20px 0 24px; }
+        .ep-q-header {
+          display: flex; align-items: center; gap: 10px;
+          background: #f1f5f9; border-left: 4px solid #0D1F3C;
+          padding: 7px 12px 7px 10px; border-radius: 0 5px 5px 0; margin-bottom: 10px;
+        }
+        .ep-q-num {
+          font-weight: 800; color: #0D1F3C; min-width: 22px;
+          font-size: 13.5px; flex-shrink: 0;
+        }
+        .ep-q-header-text { flex: 1; font-weight: 700; color: #0D1F3C; font-size: 12.5px; }
+        .ep-q-marks {
+          font-weight: 800; font-size: 11px; color: #fff;
+          background: #0D1F3C; border-radius: 4px; padding: 2px 10px;
+          white-space: nowrap; flex-shrink: 0; letter-spacing: 0.03em;
+        }
+
+        /* Sub-parts (a. … j.) */
+        .ep-subparts {
+          padding-left: 32px; border-left: 2px solid #e2e8f0; margin-left: 10px;
+        }
+        .ep-subpart {
+          display: flex; gap: 10px; margin: 5px 0; line-height: 1.65;
+          font-size: 12px; page-break-inside: avoid;
+        }
+        .ep-subpart-label {
+          font-weight: 700; color: #0D1F3C; min-width: 22px; flex-shrink: 0;
+        }
+        .ep-subpart-text { flex: 1; }
+
+        /* Divider between Q2 and long questions */
+        .ep-long-divider {
+          border-top: 1.5px dashed #cbd5e0; margin: 20px 0 16px;
+        }
+
+        /* Q3–Q7 long questions */
+        .ep-long-q {
+          display: flex; align-items: flex-start; gap: 14px;
+          margin: 10px 0; padding: 9px 12px 9px 10px;
+          line-height: 1.65; font-size: 12px; page-break-inside: avoid;
+          border: 1px solid #e2e8f0; border-radius: 4px;
+          border-left: 4px solid #00B4A6;
+        }
+        .ep-long-q-num {
+          font-weight: 800; color: #0D1F3C; min-width: 18px; flex-shrink: 0;
+          font-size: 13px;
+        }
+        .ep-long-q-text { flex: 1; color: #1a202c; }
+        .ep-long-q-marks {
+          font-weight: 700; font-size: 11px; color: #0D1F3C;
+          border: 1.5px solid #0D1F3C; border-radius: 4px; padding: 2px 8px;
+          white-space: nowrap; flex-shrink: 0;
+        }
+
+        /* Answer key section */
+        .ep-answer-key { margin-top: 36px; }
+        .ep-ak-title {
+          background: #0D1F3C; color: #fff; font-weight: 800; font-size: 13px;
+          padding: 8px 14px; border-radius: 4px; margin-bottom: 20px;
+          text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .ep-ak-section-title {
+          font-weight: 700; font-size: 12.5px; color: #0D1F3C;
+          border-bottom: 1.5px solid #e2e8f0; padding: 10px 0 5px; margin: 20px 0 8px;
+        }
+        .ep-ak-item {
+          margin: 6px 0 6px 16px; font-size: 12px; line-height: 1.7;
+        }
+        .ep-ak-bullet { list-style: none; }
+        .ep-ak-text { margin: 4px 0; font-size: 12px; line-height: 1.65; color: #4a5568; }
 
         /* ── Print media ── */
         @media print {
@@ -663,7 +927,6 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
             text={printContent}
             generation={generation}
             subjectInfo={subjectInfo}
-            showKey={showKey}
           />
         )}
 
