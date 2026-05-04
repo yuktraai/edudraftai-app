@@ -303,10 +303,11 @@ export async function POST(request) {
   // ── 7a. Fetch reference books for this subject (Phase 40) ────────────────
   let referenceBooks = []
   try {
+    // 52.2 — canonical reference books keyed by subject code (shared across all colleges)
     const { data: books } = await adminSupabase
-      .from('subject_reference_books')
+      .from('canonical_reference_books')
       .select('title, author, edition, publisher, chapter_hint, is_primary')
-      .eq('subject_id', subject_id)
+      .eq('subject_code', subject.code?.trim().toUpperCase() ?? '')
       .order('is_primary', { ascending: false })
     referenceBooks = books ?? []
   } catch {
