@@ -2,11 +2,14 @@
 
 /**
  * Phase 53 — Super Admin Analytics: Professional Dashboard Redesign
- * Chart.js trend line, donut content mix, ranked college table, needs-attention panel.
+ * Recharts (already installed) for trend line + donut; no CDN dependency.
  */
 
-import { useState, useEffect, useRef } from 'react'
-import Script from 'next/script'
+import { useState, useEffect } from 'react'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
+} from 'recharts'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -96,53 +99,9 @@ function RankBadge({ rank }) {
   return <span className="w-6 text-xs text-muted text-center">{rank}</span>
 }
 
-// ─── Trend Chart ─────────────────────────────────────────────────────────────
+// ─── Trend Chart (recharts) ────────────────────────────────────────────────────
 
-function TrendChart({ trend, chartReady }) {
-  const canvasRef = useRef(null)
-  const chartRef  = useRef(null)
-
-  useEffect(() => {
-    if (!chartReady || !canvasRef.current || !trend?.labels?.length) return
-    const Chart = window.Chart
-    if (!Chart) return
-
-    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
-
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'line',
-      data: {
-        labels:   trend.labels,
-        datasets: [{
-          data:            trend.values,
-          borderColor:     '#00B4A6',
-          backgroundColor: 'rgba(0,180,166,0.08)',
-          borderWidth:     2,
-          pointBackgroundColor: '#00B4A6',
-          pointRadius:     3,
-          pointHoverRadius: 5,
-          fill:            true,
-          tension:         0.3,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#718096' } },
-          y: {
-            beginAtZero: true,
-            ticks: { stepSize: 1, font: { size: 11 }, color: '#718096' },
-            grid: { color: '#E2E8F0', drawBorder: false },
-          },
-        },
-      },
-    })
-
-    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null } }
-  }, [trend, chartReady])
-
+function TrendChart({ trend }) {
   if (!trend?.labels?.length) {
     return (
       <div className="h-48 flex items-center justify-center">
@@ -151,56 +110,75 @@ function TrendChart({ trend, chartReady }) {
     )
   }
 
-  return <div className="h-48 relative"><canvas ref={canvasRef} /></div>
+  const chartData = trend.labels.map((label, i) => ({ label, value: trend.values[i] ?? 0 }))
+
+  return (
+    <div className="h-48">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: '#718096' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 11, fill: '#718096' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}
+            formatter={(v) => [v, 'Generations']}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#00B4A6"
+            strokeWidth={2}
+            dot={{ r: 3, fill: '#00B4A6', strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
-// ─── Donut Chart ──────────────────────────────────────────────────────────────
+// ─── Donut Chart (recharts) ───────────────────────────────────────────────────
 
-function DonutChart({ breakdown, chartReady }) {
-  const canvasRef = useRef(null)
-  const chartRef  = useRef(null)
+function DonutChart({ breakdown }) {
+  const active = breakdown.filter(b => b.count > 0)
+  if (!active.length) return null
 
-  useEffect(() => {
-    if (!chartReady || !canvasRef.current) return
-    const Chart = window.Chart
-    if (!Chart) return
-
-    const active = breakdown.filter(b => b.count > 0)
-    if (!active.length) return
-
-    if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null }
-
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'doughnut',
-      data: {
-        labels:   active.map(b => TYPE_META[b.type]?.label ?? b.type),
-        datasets: [{
-          data:            active.map(b => b.count),
-          backgroundColor: active.map(b => TYPE_META[b.type]?.color ?? '#718096'),
-          borderWidth:     2,
-          borderColor:     '#ffffff',
-          hoverOffset:     4,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '65%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => ` ${ctx.label}: ${ctx.raw} (${Math.round((ctx.raw / active.reduce((s,b) => s + b.count, 0)) * 100)}%)`,
-            },
-          },
-        },
-      },
-    })
-
-    return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null } }
-  }, [breakdown, chartReady])
-
-  return <div className="h-40 w-40 relative mx-auto"><canvas ref={canvasRef} /></div>
+  return (
+    <div className="h-40 w-40 mx-auto">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={active}
+            dataKey="count"
+            nameKey="type"
+            cx="50%"
+            cy="50%"
+            innerRadius="60%"
+            outerRadius="85%"
+            paddingAngle={2}
+          >
+            {active.map(b => (
+              <Cell key={b.type} fill={TYPE_META[b.type]?.color ?? '#718096'} />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E2E8F0' }}
+            formatter={(v, name) => [v, TYPE_META[name]?.label ?? name]}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
 // ─── Feedback Tab ─────────────────────────────────────────────────────────────
@@ -436,68 +414,57 @@ function FeedbackTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SuperAdminAnalyticsPage() {
-  const [activeTab,   setActiveTab]   = useState('usage')
-  const [range,       setRange]       = useState('month')
-  const [chartReady,  setChartReady]  = useState(false)
+  const [activeTab, setActiveTab] = useState('usage')
+  const [range,     setRange]     = useState('month')
 
   return (
-    <>
-      {/* Load Chart.js from CDN */}
-      <Script
-        src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
-        strategy="lazyOnload"
-        onLoad={() => setChartReady(true)}
-      />
-
-      <div className="p-8 max-w-6xl space-y-6">
-        {/* Header + Range picker */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="font-heading text-2xl font-bold text-navy">Global Analytics</h1>
-            <p className="text-muted text-sm mt-1">Platform-wide usage, content breakdown, and feedback intelligence.</p>
-          </div>
-          <div className="flex items-center gap-1 bg-bg border border-border rounded-xl p-1">
-            {RANGE_OPTIONS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => setRange(value)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  range === value ? 'bg-surface text-navy shadow-sm' : 'text-muted hover:text-text'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+    <div className="p-8 max-w-6xl space-y-6">
+      {/* Header + Range picker */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-navy">Global Analytics</h1>
+          <p className="text-muted text-sm mt-1">Platform-wide usage, content breakdown, and feedback intelligence.</p>
         </div>
-
-        {/* Tab bar */}
-        <div className="flex items-center gap-1 border-b border-border">
-          {TABS.map(t => (
+        <div className="flex items-center gap-1 bg-bg border border-border rounded-xl p-1">
+          {RANGE_OPTIONS.map(({ value, label }) => (
             <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === t.id
-                  ? 'border-teal text-teal'
-                  : 'border-transparent text-muted hover:text-text'
+              key={value}
+              onClick={() => setRange(value)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                range === value ? 'bg-surface text-navy shadow-sm' : 'text-muted hover:text-text'
               }`}
             >
-              {t.label}
+              {label}
             </button>
           ))}
         </div>
-
-        {/* Tab content — pass range + chartReady down */}
-        {activeTab === 'usage'    && <UsageTabWithContext range={range} chartReady={chartReady} />}
-        {activeTab === 'feedback' && <FeedbackTab />}
       </div>
-    </>
+
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 border-b border-border">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === t.id
+                ? 'border-teal text-teal'
+                : 'border-transparent text-muted hover:text-text'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'usage'    && <UsageTabWithContext range={range} />}
+      {activeTab === 'feedback' && <FeedbackTab />}
+    </div>
   )
 }
 
-// Wrapper to inject range + chartReady into UsageTab without prop-drilling refactor
-function UsageTabWithContext({ range, chartReady }) {
+function UsageTabWithContext({ range }) {
   const [apiData, setApiData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
@@ -651,7 +618,7 @@ function UsageTabWithContext({ range, chartReady }) {
       {/* ── Generation Trend ── */}
       <div className="bg-surface border border-border rounded-xl p-5">
         <h2 className="text-sm font-semibold text-text mb-4">Generation Trend</h2>
-        <TrendChart trend={trend} chartReady={chartReady} />
+        <TrendChart trend={trend} />
       </div>
 
       {/* ── Content Mix ── */}
@@ -659,7 +626,7 @@ function UsageTabWithContext({ range, chartReady }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-surface border border-border rounded-xl p-5 flex flex-col items-center justify-center gap-4">
             <h2 className="text-sm font-semibold text-text self-start">Content Mix</h2>
-            <DonutChart breakdown={breakdown} chartReady={chartReady} />
+            <DonutChart breakdown={breakdown} />
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 justify-center">
               {breakdown.filter(b => b.count > 0).map(b => (
                 <div key={b.type} className="flex items-center gap-1.5">
