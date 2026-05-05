@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { ChunksEditor } from './ChunksEditor'
 import { ParseQualityTab } from './ParseQualityTab'
 import { ClearSyllabusButton } from '../ClearSyllabusButton'
+import { RagToggle } from './RagToggle'
 
 export const metadata = { title: 'Subject Syllabus — EduDraftAI' }
 
@@ -112,6 +113,11 @@ export default async function SuperAdminSubjectSyllabusPage({ params, searchPara
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <RagToggle
+              subjectId={subject_id}
+              initialEnabled={subject.rag_enabled ?? false}
+              subjectCode={subject.code}
+            />
             <ClearSyllabusButton
               subjectId={subject_id}
               subjectName={subject.name}
