@@ -3,7 +3,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { logger } from '@/lib/logger'
 
 // GET /api/analytics/global?range=month|last_month|all
-// super_admin ONLY — returns per-college breakdown + platform totals
+// super_admin ONLY — returns per-college breakdown + platform totals + trend + deltas
 export async function GET(request) {
   try {
     const supabase = createClient()
@@ -20,85 +20,142 @@ export async function GET(request) {
     const range = searchParams.get('range') ?? 'month'
 
     const now = new Date()
-    let fromDate, toDate
+
+    // ── Date bounds ────────────────────────────────────────────────────────────
+    let fromDate, toDate, prevFromDate, prevToDate
+
     if (range === 'month') {
-      fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-      toDate   = null
+      fromDate     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      toDate       = null
+      prevFromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+      prevToDate   = fromDate
     } else if (range === 'last_month') {
-      fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
-      toDate   = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      fromDate     = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+      toDate       = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+      prevFromDate = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString()
+      prevToDate   = fromDate
     } else {
-      fromDate = null
-      toDate   = null
+      // all time — no previous comparison
+      fromDate     = null
+      toDate       = null
+      prevFromDate = null
+      prevToDate   = null
     }
 
-    // Fetch all active colleges
-    const { data: colleges, error: cErr } = await adminSupabase
-      .from('colleges').select('id, name').eq('is_active', true).order('name')
-    if (cErr) throw cErr
-
-    // Fetch all completed generations in range (for platform-wide stats)
-    const allGensQuery = (() => {
+    // ── Build scoped queries ────────────────────────────────────────────────────
+    function gensQuery(from, to) {
       let q = adminSupabase
         .from('content_generations')
-        .select('college_id, content_type, credits_used, user_id, metadata')
+        .select('college_id, content_type, credits_used, user_id, metadata, created_at')
         .eq('status', 'completed')
-      if (fromDate) q = q.gte('created_at', fromDate)
-      if (toDate)   q = q.lt('created_at', toDate)
+      if (from) q = q.gte('created_at', from)
+      if (to)   q = q.lt('created_at', to)
       return q
-    })()
+    }
 
-    // Fetch per-college lecturer counts
-    const lecturerCountQuery = adminSupabase
-      .from('users')
-      .select('college_id', { count: 'exact' })
-      .eq('role', 'lecturer')
-      .eq('is_active', true)
+    // ── Parallel fetches ────────────────────────────────────────────────────────
+    const [
+      collegesRes,
+      allGensRes,
+      prevGensRes,
+      lecturersRes,
+      departmentsRes,
+    ] = await Promise.all([
+      adminSupabase.from('colleges').select('id, name').eq('is_active', true).order('name'),
+      gensQuery(fromDate, toDate),
+      prevFromDate ? gensQuery(prevFromDate, prevToDate) : Promise.resolve({ data: [] }),
+      adminSupabase.from('users').select('college_id').eq('role', 'lecturer').eq('is_active', true),
+      adminSupabase.from('departments').select('college_id').eq('is_active', true),
+    ])
 
-    const [allGensRes, lecturerRes] = await Promise.all([allGensQuery, lecturerCountQuery])
+    if (collegesRes.error) throw collegesRes.error
 
-    const allGens = allGensRes.data ?? []
+    const colleges    = collegesRes.data   ?? []
+    const allGens     = allGensRes.data    ?? []
+    const prevGens    = prevGensRes.data   ?? []
+    const lecturers   = lecturersRes.data  ?? []
+    const departments = departmentsRes.data ?? []
 
-    // Platform-wide content type breakdown + RAG count
-    const platform_by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0 }
+    // ── Lecturer + department counts per college ────────────────────────────────
+    const lecturersByCollege = {}
+    lecturers.forEach(u => {
+      lecturersByCollege[u.college_id] = (lecturersByCollege[u.college_id] ?? 0) + 1
+    })
+    const deptsByCollege = {}
+    departments.forEach(d => {
+      deptsByCollege[d.college_id] = (deptsByCollege[d.college_id] ?? 0) + 1
+    })
+
+    // ── Current period aggregations ─────────────────────────────────────────────
+    const platform_by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0 }
     let rag_generations = 0
     allGens.forEach(g => {
       if (platform_by_type[g.content_type] !== undefined) platform_by_type[g.content_type]++
-      const chunksUsed = Number(g.metadata?.rag_chunks_used ?? 0)
-      if (chunksUsed > 0) rag_generations++
+      if (Number(g.metadata?.rag_chunks_used ?? 0) > 0) rag_generations++
     })
 
-    // Per-college grouping
+    // ── Previous period aggregations (for delta) ────────────────────────────────
+    const prevTotalGens    = prevGens.length
+    const prevTotalCredits = prevGens.reduce((s, g) => s + (g.credits_used ?? 1), 0)
+
+    // ── Trend data (daily for month/last_month, monthly for all) ───────────────
+    function buildTrend(gens, rangeType) {
+      if (gens.length === 0) return { labels: [], values: [] }
+
+      const buckets = {}
+      gens.forEach(g => {
+        const d = new Date(g.created_at)
+        let key, label
+        if (rangeType === 'all') {
+          key   = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          label = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' })
+        } else {
+          key   = d.toISOString().slice(0, 10)
+          label = d.toLocaleString('en-IN', { day: '2-digit', month: 'short' })
+        }
+        if (!buckets[key]) buckets[key] = { label, count: 0 }
+        buckets[key].count++
+      })
+
+      const sorted = Object.keys(buckets).sort()
+      return {
+        labels: sorted.map(k => buckets[k].label),
+        values: sorted.map(k => buckets[k].count),
+      }
+    }
+    const trend = buildTrend(allGens, range)
+
+    // ── Breakdown by content type ────────────────────────────────────────────────
+    const totalGens = allGens.length
+    const breakdown = Object.entries(platform_by_type)
+      .map(([type, count]) => ({
+        type,
+        count,
+        pct: totalGens > 0 ? Math.round((count / totalGens) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+
+    // ── Per-college grouping ─────────────────────────────────────────────────────
     const gensByCollege = {}
     allGens.forEach(g => {
       if (!gensByCollege[g.college_id]) gensByCollege[g.college_id] = []
       gensByCollege[g.college_id].push(g)
     })
 
-    // Lecturer counts per college (from all lecturers in DB, not filtered by range)
-    const lecturersByCollege = {}
-    const { data: lecturers } = await adminSupabase
-      .from('users')
-      .select('college_id')
-      .eq('role', 'lecturer')
-      .eq('is_active', true)
-    ;(lecturers ?? []).forEach(u => {
-      lecturersByCollege[u.college_id] = (lecturersByCollege[u.college_id] ?? 0) + 1
-    })
-
-    // Build per-college results
-    const results = (colleges ?? []).map(col => {
+    // ── Build per-college results ───────────────────────────────────────────────
+    const collegeResults = colleges.map(col => {
       const gens         = gensByCollege[col.id] ?? []
       const total_gens   = gens.length
       const credits_used = gens.reduce((s, g) => s + (g.credits_used ?? 1), 0)
 
       const typeCounts = {}
       gens.forEach(g => { typeCounts[g.content_type] = (typeCounts[g.content_type] ?? 0) + 1 })
-      const top_type   = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+      const top_type = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
 
       return {
         college_id:   col.id,
         college_name: col.name,
+        departments:  deptsByCollege[col.id]   ?? 0,
         lecturers:    lecturersByCollege[col.id] ?? 0,
         generations:  total_gens,
         credits_used,
@@ -107,16 +164,47 @@ export async function GET(request) {
       }
     })
 
-    // Platform totals
-    const totals = {
-      colleges:        colleges?.length ?? 0,
-      lecturers:       Object.values(lecturersByCollege).reduce((s, n) => s + n, 0),
-      generations:     allGens.length,
-      credits_used:    allGens.reduce((s, g) => s + (g.credits_used ?? 1), 0),
+    // ── Needs attention ──────────────────────────────────────────────────────────
+    const needs_attention = range !== 'all'
+      ? collegeResults
+          .filter(c => c.generations === 0)
+          .map(c => ({ id: c.college_id, name: c.college_name, issue: 'no_activity' }))
+      : []
+
+    // ── Summary with deltas ──────────────────────────────────────────────────────
+    const totalLecturers  = Object.values(lecturersByCollege).reduce((s, n) => s + n, 0)
+    const totalCredits    = allGens.reduce((s, g) => s + (g.credits_used ?? 1), 0)
+
+    const summary = {
+      colleges:        { current: colleges.length,  previous: colleges.length },
+      lecturers:       { current: totalLecturers,   previous: totalLecturers },
+      generations:     { current: totalGens,        previous: prevTotalGens },
+      credits_used:    { current: totalCredits,     previous: prevTotalCredits },
       rag_generations,
     }
 
-    return Response.json({ data: results, platform_by_type, totals, range })
+    // ── Legacy-compatible totals (for any other callers) ───────────────────────
+    const totals = {
+      colleges:        colleges.length,
+      lecturers:       totalLecturers,
+      generations:     totalGens,
+      credits_used:    totalCredits,
+      rag_generations,
+    }
+
+    return Response.json({
+      // New shape (Phase 53)
+      summary,
+      breakdown,
+      trend,
+      colleges: collegeResults,
+      needs_attention,
+      // Legacy shape (kept for compatibility)
+      data:             collegeResults,
+      platform_by_type,
+      totals,
+      range,
+    })
   } catch (err) {
     logger.error('[GET /api/analytics/global]', err)
     return Response.json({ error: 'Failed to fetch global analytics', code: err.message }, { status: 500 })
