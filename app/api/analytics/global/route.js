@@ -41,7 +41,7 @@ export async function GET(request) {
     const allGensQuery = (() => {
       let q = adminSupabase
         .from('content_generations')
-        .select('college_id, content_type, credits_used, user_id')
+        .select('college_id, content_type, credits_used, user_id, metadata')
         .eq('status', 'completed')
       if (fromDate) q = q.gte('created_at', fromDate)
       if (toDate)   q = q.lt('created_at', toDate)
@@ -59,10 +59,13 @@ export async function GET(request) {
 
     const allGens = allGensRes.data ?? []
 
-    // Platform-wide content type breakdown
+    // Platform-wide content type breakdown + RAG count
     const platform_by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0 }
+    let rag_generations = 0
     allGens.forEach(g => {
       if (platform_by_type[g.content_type] !== undefined) platform_by_type[g.content_type]++
+      const chunksUsed = Number(g.metadata?.rag_chunks_used ?? 0)
+      if (chunksUsed > 0) rag_generations++
     })
 
     // Per-college grouping
@@ -106,10 +109,11 @@ export async function GET(request) {
 
     // Platform totals
     const totals = {
-      colleges:     colleges?.length ?? 0,
-      lecturers:    Object.values(lecturersByCollege).reduce((s, n) => s + n, 0),
-      generations:  allGens.length,
-      credits_used: allGens.reduce((s, g) => s + (g.credits_used ?? 1), 0),
+      colleges:        colleges?.length ?? 0,
+      lecturers:       Object.values(lecturersByCollege).reduce((s, n) => s + n, 0),
+      generations:     allGens.length,
+      credits_used:    allGens.reduce((s, g) => s + (g.credits_used ?? 1), 0),
+      rag_generations,
     }
 
     return Response.json({ data: results, platform_by_type, totals, range })

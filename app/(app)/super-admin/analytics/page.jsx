@@ -221,6 +221,57 @@ function UsageTab() {
         <StatCard label="Credits Consumed"  value={totals.credits_used ?? 0}         icon="💳" accent />
       </div>
 
+      {/* ── RAG Stat ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-surface border border-teal/30 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">RAG-Assisted Generations</p>
+            <div className="w-8 h-8 rounded-lg bg-teal-light flex items-center justify-center">
+              <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+              </svg>
+            </div>
+          </div>
+          <div className="flex items-end gap-3">
+            <p className="text-3xl font-bold text-teal">{totals.rag_generations ?? 0}</p>
+            {(totals.generations ?? 0) > 0 && (
+              <p className="text-sm text-muted mb-1">
+                ({Math.round(((totals.rag_generations ?? 0) / totals.generations) * 100)}% of all generations)
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-muted mt-1">
+            Content generated with reference documents from Pinecone vector store
+          </p>
+        </div>
+
+        {(totals.rag_generations ?? 0) > 0 && (totals.generations ?? 0) > 0 && (
+          <div className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted mb-3">RAG Adoption Rate</p>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted">RAG-assisted</span>
+                <span className="text-xs font-semibold text-teal">
+                  {Math.round(((totals.rag_generations ?? 0) / totals.generations) * 100)}%
+                </span>
+              </div>
+              <div className="h-3 bg-bg rounded-full overflow-hidden border border-border">
+                <div
+                  className="h-full bg-teal rounded-full transition-all"
+                  style={{ width: `${Math.round(((totals.rag_generations ?? 0) / totals.generations) * 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-muted">Standard</span>
+                <span className="text-xs font-semibold text-muted">
+                  {Math.round((((totals.generations ?? 0) - (totals.rag_generations ?? 0)) / totals.generations) * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Content Breakdown ── */}
       {totalGens > 0 && (
         <ContentBreakdown byType={platform_by_type} total={totalGens} />
