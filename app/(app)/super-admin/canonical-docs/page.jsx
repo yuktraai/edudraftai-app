@@ -43,10 +43,13 @@ const EMPTY_BOOK = { title: '', author: '', edition: '', publisher: '', chapter_
 
 export default function CanonicalDocsPage() {
 
-  // ── Subject codes ─────────────────────────────────────────────────────────
-  const [codes,        setCodes]        = useState([])
-  const [selectedCode, setSelectedCode] = useState('')
-  const [codesLoading, setCodesLoading] = useState(true)
+  // ── Subject codes + combobox search ──────────────────────────────────────
+  const [codes,          setCodes]          = useState([])
+  const [selectedCode,   setSelectedCode]   = useState('')
+  const [codesLoading,   setCodesLoading]   = useState(true)
+  const [codeSearch,     setCodeSearch]     = useState('')
+  const [showCodeDrop,   setShowCodeDrop]   = useState(false)
+  const comboRef = useRef(null)
 
   // ── RAG Documents ─────────────────────────────────────────────────────────
   const [docs,         setDocs]         = useState([])
@@ -77,11 +80,28 @@ export default function CanonicalDocsPage() {
       .then(r => r.json())
       .then(d => {
         setCodes(d.codes ?? [])
-        if (d.codes?.length > 0) setSelectedCode(d.codes[0].code)
+        if (d.codes?.length > 0) {
+          setSelectedCode(d.codes[0].code)
+          setCodeSearch(`${d.codes[0].code} — ${d.codes[0].name}`)
+        }
       })
       .catch(() => setCodes([]))
       .finally(() => setCodesLoading(false))
   }, [])
+
+  // ── Close combobox dropdown on outside click ──────────────────────────────
+  useEffect(() => {
+    function handleOutsideClick(e) {
+      if (comboRef.current && !comboRef.current.contains(e.target)) {
+        setShowCodeDrop(false)
+        // Restore display text to selected code if search was abandoned
+        const sel = codes.find(c => c.code === selectedCode)
+        if (sel) setCodeSearch(`${sel.code} — ${sel.name}`)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [codes, selectedCode])
 
   // ── Load docs + books when selected code changes ──────────────────────────
   useEffect(() => {
@@ -243,23 +263,79 @@ export default function CanonicalDocsPage() {
         </div>
       </div>
 
-      {/* Subject Code Selector */}
+      {/* Subject Code Selector — searchable combobox */}
       <div className="bg-surface border border-border rounded-2xl p-5 mb-5">
         <label className="block text-sm font-semibold text-navy mb-2">Subject Code</label>
         {codesLoading ? (
-          <div className="h-10 bg-bg rounded-lg animate-pulse w-64" />
+          <div className="h-10 bg-bg rounded-lg animate-pulse w-72" />
         ) : codes.length === 0 ? (
           <p className="text-sm text-muted">No subject codes found. Add subjects to colleges first.</p>
         ) : (
-          <select
-            value={selectedCode}
-            onChange={e => setSelectedCode(e.target.value)}
-            className="w-full max-w-xs border border-border rounded-lg px-3 py-2 text-sm text-navy bg-surface focus:outline-none focus:ring-2 focus:ring-teal/30"
-          >
-            {codes.map(c => (
-              <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
-            ))}
-          </select>
+          <div ref={comboRef} className="relative w-full max-w-sm">
+            <div className="relative">
+              <input
+                type="text"
+                value={codeSearch}
+                onChange={e => {
+                  setCodeSearch(e.target.value)
+                  setShowCodeDrop(true)
+                }}
+                onFocus={() => setShowCodeDrop(true)}
+                placeholder="Search subject code or name…"
+                className="w-full border border-border rounded-lg pl-3 pr-9 py-2.5 text-sm text-navy bg-surface focus:outline-none focus:ring-2 focus:ring-teal/30"
+              />
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </div>
+
+            {showCodeDrop && (() => {
+              const q = codeSearch.toLowerCase().trim()
+              const filtered = q
+                ? codes.filter(c =>
+                    c.code.toLowerCase().includes(q) ||
+                    c.name.toLowerCase().includes(q)
+                  )
+                : codes
+              return filtered.length > 0 ? (
+                <ul className="absolute z-20 mt-1 w-full bg-surface border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                  {filtered.map(c => (
+                    <li
+                      key={c.code}
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        setSelectedCode(c.code)
+                        setCodeSearch(`${c.code} — ${c.name}`)
+                        setShowCodeDrop(false)
+                      }}
+                      className={`px-4 py-2.5 cursor-pointer text-sm flex items-center justify-between gap-3 hover:bg-bg transition-colors ${
+                        c.code === selectedCode ? 'bg-teal-light text-teal font-semibold' : 'text-text'
+                      }`}
+                    >
+                      <span>
+                        <span className="font-mono font-bold">{c.code}</span>
+                        <span className="text-muted ml-2 font-normal">{c.name}</span>
+                      </span>
+                      {c.code === selectedCode && (
+                        <svg className="w-4 h-4 text-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="absolute z-20 mt-1 w-full bg-surface border border-border rounded-xl shadow-lg px-4 py-3">
+                  <p className="text-sm text-muted">No subject codes match &ldquo;{codeSearch}&rdquo;</p>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+        {selectedCode && !codesLoading && (
+          <p className="text-xs text-muted mt-2">
+            Showing content for <span className="font-mono font-semibold text-navy">{selectedCode}</span>
+          </p>
         )}
       </div>
 

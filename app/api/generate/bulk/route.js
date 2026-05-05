@@ -10,7 +10,8 @@ import { buildExamPaperPrompt } from '@/lib/ai/prompts/exam-paper'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-const OPENAI_MODEL = 'gpt-4o'
+const OPENAI_MODEL    = 'gpt-4o'
+const BULK_CREDIT_COST = 2   // credits deducted per topic in a bulk generation
 
 const bodySchema = z.object({
   unit_number:  z.number().int().positive(),
@@ -89,12 +90,14 @@ export async function POST(request) {
   const { data: balance } = await adminSupabase
     .rpc('get_credit_balance', { p_user_id: user.id })
 
-  if ((balance ?? 0) < chunks.length) {
+  const totalCostRequired = chunks.length * BULK_CREDIT_COST
+
+  if ((balance ?? 0) < totalCostRequired) {
     return Response.json(
       {
-        error: `Insufficient credits. This unit has ${chunks.length} topics and requires ${chunks.length} credits. You have ${balance ?? 0} credit${(balance ?? 0) !== 1 ? 's' : ''}.`,
+        error: `Insufficient credits. This unit has ${chunks.length} topics × ${BULK_CREDIT_COST} credits each = ${totalCostRequired} credits required. You have ${balance ?? 0} credit${(balance ?? 0) !== 1 ? 's' : ''}.`,
         code: 'NO_CREDITS',
-        required: chunks.length,
+        required: totalCostRequired,
         available: balance ?? 0,
       },
       { status: 402 }
@@ -218,12 +221,20 @@ export async function POST(request) {
           })
           .eq('id', childId)
 
-        // Deduct 1 credit atomically
-        await adminSupabase.rpc('deduct_credit_and_log', {
-          p_user_id:       user.id,
-          p_college_id:    profile.college_id,
-          p_generation_id: childId,
-        })
+        // Deduct BULK_CREDIT_COST credits (call once per credit unit — RPC deducts 1 each time)
+        for (let i = 0; i < BULK_CREDIT_COST; i++) {
+          await adminSupabase.rpc('deduct_credit_and_log', {
+            p_user_id:       user.id,
+            p_college_id:    profile.college_id,
+            p_generation_id: childId,
+          })
+        }
+
+        // Record actual credits used on the row
+        await adminSupabase
+          .from('content_generations')
+          .update({ credits_used: BULK_CREDIT_COST })
+          .eq('id', childId)
 
         completedCount++
 

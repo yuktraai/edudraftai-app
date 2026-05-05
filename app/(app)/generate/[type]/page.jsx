@@ -623,7 +623,7 @@ export default function GenerateTypePage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
               </svg>
-              {isBulking ? 'Starting bulk generation\u2026' : 'Generate for Entire Unit (uses multiple credits)'}
+              {isBulking ? 'Starting bulk generation\u2026' : 'Generate for Entire Unit (2 credits per topic)'}
             </button>
           )}
           {bulkParentId && (
