@@ -98,7 +98,7 @@ export default async function WebinarDetailPage({ params }) {
                   label: `${webinar.time_ist} IST${webinar.time_est ? ` · ${webinar.time_est} EST` : ''}${webinar.time_pst ? ` · ${webinar.time_pst} PST` : ''}`,
                 },
                 { icon: '⏱', label: `${webinar.duration_mins} minutes` },
-                { icon: '📍', label: 'Google Meet (free, online)' },
+                { icon: '📍', label: 'Online (Meeting Link)' },
                 { icon: '👥', label: `${regCount ?? 0} people registered` },
               ].map(({ icon, label }) => (
                 <div key={label} className="flex items-center gap-3 text-sm text-text">

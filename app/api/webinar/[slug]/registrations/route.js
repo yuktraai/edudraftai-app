@@ -40,7 +40,7 @@ export async function GET(request, { params }) {
     const { searchParams } = new URL(request.url)
     if (searchParams.get('format') === 'csv') {
       const csv = [
-        ['Name','Email','Role','College','City','Registered At','Meet Link Sent','Feedback Submitted','Rating'],
+        ['Name','Email','Role','College','City','Registered At','Meeting Link Sent','Feedback Submitted','Rating'],
         ...rows.map(r => [
           r.name, r.email, r.role, r.college, r.city ?? '',
           new Date(r.registered_at).toLocaleString('en-IN'),

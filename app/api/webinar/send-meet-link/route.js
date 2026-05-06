@@ -40,7 +40,7 @@ export async function POST(request) {
           await resend.emails.send({
             from: `EduDraftAI <${process.env.RESEND_FROM_EMAIL}>`,
             to: reg.email,
-            subject: `Your Google Meet link — ${webinar.title} at ${webinar.time_ist} IST`,
+            subject: `Your meeting link — ${webinar.title} at ${webinar.time_ist} IST`,
             html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#F4F7F6;padding:40px 16px">
               <table width="560" style="background:#fff;border-radius:16px;border:1px solid #E2E8F0;margin:0 auto">
               <tr><td style="background:#0D1F3C;padding:24px 32px;border-radius:16px 16px 0 0">
@@ -48,7 +48,7 @@ export async function POST(request) {
               </td></tr>
               <tr><td style="padding:32px">
                 <h2 style="color:#0D1F3C;margin:0 0 16px">Hi ${reg.name}, here's your meeting link!</h2>
-                <p style="color:#718096;margin:0 0 24px">Your Google Meet link for tonight's EduDraftAI demo:</p>
+                <p style="color:#718096;margin:0 0 24px">Your meeting link for tonight's EduDraftAI demo:</p>
                 <a href="${webinar.meet_link}" style="display:inline-block;background:#00B4A6;color:#fff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px">Join the Meeting →</a>
                 <p style="color:#718096;font-size:13px;margin:24px 0 20px">Event: ${webinar.title} · ${webinar.time_ist} IST</p>
                 <table width="100%" cellpadding="14" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #86efac"><tr><td>

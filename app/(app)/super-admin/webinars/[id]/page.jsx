@@ -87,7 +87,7 @@ export default function EditWebinarPage() {
   }
 
   async function handleSendMeetLink() {
-    if (!form.meet_link) { setError('Set a Google Meet link first, then save.'); return }
+    if (!form.meet_link) { setError('Set a meeting link first, then save.'); return }
     setMeetSending(true); setMeetResult(null); setError(null)
     try {
       const res  = await fetch('/api/webinar/send-meet-link', {
@@ -252,14 +252,14 @@ export default function EditWebinarPage() {
           ))}
         </div>
 
-        {/* Meet link + Email actions */}
+        {/* Meeting link + Email actions */}
         <div className="bg-surface border border-border rounded-2xl p-6 space-y-5">
-          <h2 className="font-semibold text-navy">Meet Link & Emails</h2>
+          <h2 className="font-semibold text-navy">Meeting Link & Emails</h2>
 
           <div>
-            <label className="block text-sm font-medium text-text mb-1.5">Google Meet Link</label>
+            <label className="block text-sm font-medium text-text mb-1.5">Meeting Link</label>
             <input value={form.meet_link} onChange={e => setField('meet_link', e.target.value)}
-              placeholder="https://meet.google.com/abc-defg-hij" type="url"
+              placeholder="https://zoom.us/j/..." type="url"
               className="w-full px-3.5 py-2.5 border border-border rounded-xl text-sm bg-bg focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/20 font-mono" />
             <p className="text-xs text-muted mt-1">Save after adding the link, then use the button below to email registrants.</p>
           </div>
@@ -267,7 +267,7 @@ export default function EditWebinarPage() {
           <div className="flex gap-3">
             <button type="button" onClick={handleSendMeetLink} disabled={meetSending}
               className="flex-1 flex items-center justify-center gap-2 border border-teal text-teal hover:bg-teal hover:text-white font-semibold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50">
-              {meetSending ? 'Sending…' : '📨 Send Meet Link to All'}
+              {meetSending ? 'Sending…' : '📨 Send Meeting Link to All'}
             </button>
             <button type="button" onClick={handleSendFeedback} disabled={fbSending}
               className="flex-1 flex items-center justify-center gap-2 border border-teal text-teal hover:bg-teal hover:text-white font-semibold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50">

@@ -40,7 +40,7 @@ function buildConfirmationEmail({ name, webinar, feedbackToken }) {
     <p style="margin:0 0 6px;font-size:15px;color:#1A202C"><strong>${webinar.title}</strong></p>
     <p style="margin:0 0 4px;font-size:14px;color:#4a5568">📅 ${formatDate(webinar.date)}</p>
     <p style="margin:0 0 4px;font-size:14px;color:#4a5568">🕗 ${webinar.time_ist} IST &nbsp;·&nbsp; ${webinar.time_est} EST</p>
-    <p style="margin:0;font-size:14px;color:#4a5568">📍 Google Meet (online)</p>
+    <p style="margin:0;font-size:14px;color:#4a5568">📍 Online (meeting link)</p>
   </td></tr>
   </table>
   ${webinar.meet_link
@@ -49,7 +49,7 @@ function buildConfirmationEmail({ name, webinar, feedbackToken }) {
         <a href="${webinar.meet_link}" style="font-size:15px;color:#0D1F3C;font-weight:700;word-break:break-all">${webinar.meet_link}</a>
        </td></tr></table>`
     : `<p style="color:#718096;font-size:14px;margin:0 0 24px;padding:16px;background:#f8fafc;border-radius:8px;border-left:3px solid #00B4A6">
-        📧 The Google Meet link will be sent to this email <strong>1 hour before the event.</strong></p>`
+        📧 The meeting link will be sent to this email <strong>1 hour before the event.</strong></p>`
   }
   <h3 style="font-size:15px;color:#0D1F3C;margin:0 0 12px">What you'll see:</h3>
   <ul style="margin:0 0 24px;padding-left:20px;color:#4a5568;font-size:14px;line-height:1.8">

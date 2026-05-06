@@ -94,7 +94,7 @@ export default function WebinarRegistrationsPage() {
         <div className="grid grid-cols-4 gap-4">
           {[
             { label: 'Total Registered',  value: data.length },
-            { label: 'Meet Link Sent',    value: data.filter(r => r.meet_link_sent).length },
+            { label: 'Meeting Link Sent',  value: data.filter(r => r.meet_link_sent).length },
             { label: 'Feedback Received', value: data.filter(r => r.feedback_submitted).length },
             {
               label: 'Avg Rating',
