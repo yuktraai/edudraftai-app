@@ -752,9 +752,13 @@ function buildExamPaperHtml(rawText) {
 function ExamPaperContent({ text, generation, subjectInfo }) {
   const totalMarks  = generation.prompt_params?.total_marks ?? 80
   const duration    = generation.prompt_params?.duration_mins ?? 180
-  const examType    = generation.prompt_params?.exam_type ?? 'end_semester'
 
-  // Format duration: 90 min → "1½ Hrs", 180 min → "3 Hrs"
+  // Infer exam type: prefer stored value, fall back to total_marks
+  // (old drafts may not have exam_type in prompt_params)
+  const storedType  = generation.prompt_params?.exam_type
+  const examType    = storedType ?? (totalMarks <= 50 ? 'mid_semester' : 'end_semester')
+
+  // Format duration: 90 min → "1½ Hrs", 60 min → "1 Hr", 180 min → "3 Hrs"
   const hrs  = Math.floor(duration / 60)
   const mins = duration % 60
   const durationLabel = mins === 30
@@ -763,7 +767,7 @@ function ExamPaperContent({ text, generation, subjectInfo }) {
       ? `${hrs} Hr${hrs !== 1 ? 's' : ''}`
       : `${hrs}h ${mins}m`
 
-  // Master instruction depends on exam type
+  // Master instruction and long-Q attempt count depend on exam type
   const masterInstruction = examType === 'mid_semester'
     ? 'Answer any four Questions including Q No.1 & 2'
     : 'Answer any five Questions including Q No.1 & 2'
