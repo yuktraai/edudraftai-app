@@ -24,6 +24,46 @@ function sanitizeMarksNotation(text) {
     .replace(/^[^\n]*(?:fill in the real|before printing)[^\n]*\n?/gmi, '')
 }
 
+/**
+ * Client-side fallback: recompute the grand-total row of the Mark Distribution
+ * Table from the actual section-row values and correct it if wrong.
+ * Mirrors the server-side fixTestPlanOutput — protects older saved drafts.
+ */
+function fixMarkTableTotal(text, expectedTotal) {
+  if (!text || !expectedTotal) return text
+  const lines  = text.split('\n')
+  const result = [...lines]
+  let inTable = false, sectionSum = 0, totalRowIdx = -1
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim()
+    if (!inTable) {
+      if (/section/i.test(trimmed) && /total/i.test(trimmed) && trimmed.startsWith('|')) {
+        inTable = true; sectionSum = 0; totalRowIdx = -1
+      }
+      continue
+    }
+    if (!trimmed.startsWith('|')) { inTable = false; continue }
+    if (/^\|\s*[-:]+[\s|:-]*\|/.test(trimmed)) continue
+    const cells = trimmed.replace(/^\||\|$/g, '').split('|').map(c => c.trim())
+    const firstCell = cells[0].replace(/\*/g, '').trim()
+    if (/^total$/i.test(firstCell)) { totalRowIdx = i; continue }
+    if (totalRowIdx === -1) {
+      const val = parseInt(cells[cells.length - 1].replace(/\*/g, '').trim(), 10)
+      if (!isNaN(val) && val > 0) sectionSum += val
+    }
+  }
+  if (totalRowIdx >= 0) {
+    const correct = sectionSum > 0 ? sectionSum : expectedTotal
+    result[totalRowIdx] = lines[totalRowIdx].replace(
+      /(\|\s*)\*{0,2}\s*\d+\s*\*{0,2}(\s*\|?\s*)$/,
+      (_, b, a) => `${b}**${correct}**${a}`
+    )
+  }
+  // Also fix "Max Marks: N" in the header text
+  return result.join('\n').replace(/\bMax\s*Marks\s*:\s*\d+/gi, `Max Marks: ${expectedTotal}`)
+}
+
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-IN', {
@@ -464,9 +504,13 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
   const date  = formatDate(generation.created_at)
   const topic = generation.prompt_params?.topic ?? ''
 
+  const totalMarks = generation.prompt_params?.total_marks
+
   // Replace AI-generated placeholders with real values before parsing,
   // then sanitize LaTeX mark wrappers and remove any leftover AI warnings.
-  const processed = sanitizeMarksNotation(
+  // Also fix any wrong Total row in the Mark Distribution Table (client-side
+  // fallback covers drafts that were saved before the server-side fixer was deployed).
+  const processed = fixMarkTableTotal(sanitizeMarksNotation(
     (text ?? '')
       .replace(/\[COLLEGE NAME\]/gi, college?.name ?? '')
       .replace(/\[DATE\]/gi,         date)
@@ -475,7 +519,7 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
       .replace(/\[SEMESTER\]/gi,     subjectInfo?.semester ? `Semester ${subjectInfo.semester}` : '')
       .replace(/\[LECTURER\]/gi,     lecturer?.name ?? '')
       .replace(/\[TOPIC\]/gi,        topic)
-  )
+  ), totalMarks)
 
   return (
     <div

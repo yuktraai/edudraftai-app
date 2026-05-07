@@ -7,6 +7,7 @@ import { buildMcqBankPrompt } from '@/lib/ai/prompts/mcq-bank'
 import { buildQuestionBankPrompt } from '@/lib/ai/prompts/question-bank'
 import { buildTestPlanPrompt } from '@/lib/ai/prompts/test-plan'
 import { buildExamPaperPrompt } from '@/lib/ai/prompts/exam-paper'
+import { fixTestPlanOutput } from '@/lib/ai/fixTestPlanOutput'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -207,6 +208,11 @@ export async function POST(request) {
         }
 
         const ms = Date.now() - startTime
+
+        // Fix test_plan arithmetic errors before saving
+        if (content_type === 'test_plan' && promptParams.total_marks) {
+          fullOutput = fixTestPlanOutput(fullOutput, promptParams.total_marks)
+        }
 
         // Update child to completed
         await adminSupabase

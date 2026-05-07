@@ -14,6 +14,7 @@ import { maybeRewardReferral } from '@/lib/referral'
 import { embedText } from '@/lib/rag/embedder'
 import { queryContext, canonicalNamespace } from '@/lib/rag/pinecone'
 import { validateOutput } from '@/lib/ai/validate-output'
+import { fixTestPlanOutput } from '@/lib/ai/fixTestPlanOutput'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -492,6 +493,11 @@ export async function POST(request) {
 
       // ── 10. Save completed output + deduct credit ────────────────────────
       const ms = Date.now() - startTime
+
+      // Fix test_plan arithmetic errors (wrong Total row in Mark Distribution Table)
+      if (content_type === 'test_plan' && promptParams.total_marks) {
+        fullOutput = fixTestPlanOutput(fullOutput, promptParams.total_marks)
+      }
 
       // 48.7 — Validate output structure
       const validationFlags = validateOutput(content_type, fullOutput, promptParams)
