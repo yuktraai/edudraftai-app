@@ -8,6 +8,22 @@ import { getAcademicYear } from '@/lib/utils/academicYear'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Strip LaTeX math wrappers from marks annotations that the AI sometimes
+ * produces, e.g.  \( [1 \text{ mark}] \)  →  [1 mark]
+ * Applied as a pre-processing pass before any line-by-line parsing.
+ */
+function sanitizeMarksNotation(text) {
+  if (!text) return text
+  return text
+    // \( [N \text{ marks}] \)  and  \( [N \text{ mark}] \)
+    .replace(/\\\(\s*\[(\d+)\s*\\text\{marks?\}\]\s*\\\)/gi, '[$1 marks]')
+    // \( [N marks] \)  (no \text{})
+    .replace(/\\\(\s*\[(\d+)\s*marks?\]\s*\\\)/gi, '[$1 marks]')
+    // Remove "Please fill in the real college name and date before printing." warnings
+    .replace(/^[^\n]*(?:fill in the real|before printing)[^\n]*\n?/gmi, '')
+}
+
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-IN', {
@@ -104,7 +120,7 @@ function PrintFooter({ lecturer, college }) {
           <span>Prepared by: <strong>{lecturer.name}</strong></span>
         )}
         {college?.name && (
-          <span className="print-footer-sep"> · {college.name}</span>
+          <span className="print-footer-college">{college.name}</span>
         )}
       </div>
       <div className="print-footer-center">
@@ -317,7 +333,7 @@ function QuestionBankContent({ text }) {
   return (
     <div
       className="print-qb"
-      dangerouslySetInnerHTML={{ __html: buildQuestionBankHtml(text ?? '') }}
+      dangerouslySetInnerHTML={{ __html: buildQuestionBankHtml(sanitizeMarksNotation(text ?? '')) }}
     />
   )
 }
@@ -380,9 +396,9 @@ function buildTestPlanHtml(rawText) {
       parts.push(
         `<div class="tp-instructions">` +
         `<div class="tp-instr-label">Instructions</div>` +
-        `<ol class="tp-instr-list">` +
+        `<ul class="tp-instr-list">` +
         items.map(t => `<li>${escHtml(t)}</li>`).join('') +
-        `</ol></div>`
+        `</ul></div>`
       )
       continue
     }
@@ -448,15 +464,18 @@ function TestPlanContent({ text, college, generation, subjectInfo, lecturer }) {
   const date  = formatDate(generation.created_at)
   const topic = generation.prompt_params?.topic ?? ''
 
-  // Replace AI-generated placeholders with real values before parsing
-  const processed = (text ?? '')
-    .replace(/\[COLLEGE NAME\]/gi, college?.name ?? '')
-    .replace(/\[DATE\]/gi,         date)
-    .replace(/\[Date\]/g,          date)
-    .replace(/\[SUBJECT\]/gi,      subjectInfo?.name ?? '')
-    .replace(/\[SEMESTER\]/gi,     subjectInfo?.semester ? `Semester ${subjectInfo.semester}` : '')
-    .replace(/\[LECTURER\]/gi,     lecturer?.name ?? '')
-    .replace(/\[TOPIC\]/gi,        topic)
+  // Replace AI-generated placeholders with real values before parsing,
+  // then sanitize LaTeX mark wrappers and remove any leftover AI warnings.
+  const processed = sanitizeMarksNotation(
+    (text ?? '')
+      .replace(/\[COLLEGE NAME\]/gi, college?.name ?? '')
+      .replace(/\[DATE\]/gi,         date)
+      .replace(/\[Date\]/g,          date)
+      .replace(/\[SUBJECT\]/gi,      subjectInfo?.name ?? '')
+      .replace(/\[SEMESTER\]/gi,     subjectInfo?.semester ? `Semester ${subjectInfo.semester}` : '')
+      .replace(/\[LECTURER\]/gi,     lecturer?.name ?? '')
+      .replace(/\[TOPIC\]/gi,        topic)
+  )
 
   return (
     <div
@@ -884,8 +903,8 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
           font-weight: 700; font-size: 10.5px; text-transform: uppercase;
           letter-spacing: 0.06em; color: #92400e; margin-bottom: 5px;
         }
-        .tp-instr-list { margin: 0; padding-left: 18px; color: #78350f; }
-        .tp-instr-list li { margin-bottom: 3px; line-height: 1.55; }
+        .tp-instr-list { margin: 0; padding-left: 22px; color: #78350f; list-style: disc; }
+        .tp-instr-list li { margin-bottom: 4px; line-height: 1.6; padding-left: 2px; }
 
         .tp-section-hdr {
           border-left: 4px solid #0D1F3C; padding: 5px 12px;
@@ -931,10 +950,10 @@ export function PrintDocument({ generation, college, subjectInfo = {}, lecturer,
           font-size: 11px;
           color: #718096;
         }
-        .print-footer-left  { flex: 1; }
+        .print-footer-left  { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+        .print-footer-college { display: block; color: #4a5568; }
         .print-footer-center { flex: 1; text-align: center; color: #00B4A6; font-weight: 600; letter-spacing: .01em; }
         .print-footer-right  { flex: 1; text-align: right; }
-        .print-footer-sep { margin-left: 2px; }
 
         /* CSS page counter — use browser's native counter (starts at 1, no reset needed) */
         @media screen { .print-page-num::after { content: ""; } }
