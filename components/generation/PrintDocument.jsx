@@ -750,10 +750,23 @@ function buildExamPaperHtml(rawText) {
 // ─── Exam Paper Content ───────────────────────────────────────────────────────
 
 function ExamPaperContent({ text, generation, subjectInfo }) {
-  const totalMarks = generation.prompt_params?.total_marks ?? 80
-  const duration   = generation.prompt_params?.duration_mins ?? 180
-  const hrs        = Math.floor(duration / 60)
-  const durationLabel = `${hrs} Hour${hrs !== 1 ? 's' : ''}`
+  const totalMarks  = generation.prompt_params?.total_marks ?? 80
+  const duration    = generation.prompt_params?.duration_mins ?? 180
+  const examType    = generation.prompt_params?.exam_type ?? 'end_semester'
+
+  // Format duration: 90 min → "1½ Hrs", 180 min → "3 Hrs"
+  const hrs  = Math.floor(duration / 60)
+  const mins = duration % 60
+  const durationLabel = mins === 30
+    ? `${hrs}½ Hrs`
+    : mins === 0
+      ? `${hrs} Hr${hrs !== 1 ? 's' : ''}`
+      : `${hrs}h ${mins}m`
+
+  // Master instruction depends on exam type
+  const masterInstruction = examType === 'mid_semester'
+    ? 'Answer any four Questions including Q No.1 & 2'
+    : 'Answer any five Questions including Q No.1 & 2'
 
   return (
     <div className="exam-paper">
@@ -764,7 +777,7 @@ function ExamPaperContent({ text, generation, subjectInfo }) {
           <span><strong>Time:</strong> {durationLabel}</span>
         </div>
         <div className="exam-instr-note">
-          <strong>Instructions:</strong> Answer any five Questions including Q No.1 &amp; 2.
+          <strong>Instructions:</strong> {masterInstruction}.
           Figures in the right hand margin indicate marks.
         </div>
         <div className="exam-roll">Roll No: ___________________________</div>
