@@ -60,8 +60,24 @@ function fixMarkTableTotal(text, expectedTotal) {
       (_, b, a) => `${b}**${correct}**${a}`
     )
   }
+
+  let fixed = result.join('\n')
+
   // Also fix "Max Marks: N" in the header text
-  return result.join('\n').replace(/\bMax\s*Marks\s*:\s*\d+/gi, `Max Marks: ${expectedTotal}`)
+  fixed = fixed.replace(/\bMax\s*Marks\s*:\s*\d+/gi, `Max Marks: ${expectedTotal}`)
+
+  // Fix section headers where marks-per-question exceed MAX (client-side fallback)
+  // e.g. "SECTION C — 16 MARKS EACH (LONG ANSWER)" → replace 16 with capped value
+  const MAX_Q = 10
+  fixed = fixed.replace(
+    /(SECTION\s+[A-C][^—\n]*[—-]\s*)(\d+)(\s*MARKS?\s*EACH)/gi,
+    (_, prefix, num, suffix) => {
+      const n = parseInt(num, 10)
+      return n > MAX_Q ? `${prefix}${MAX_Q}${suffix}` : `${prefix}${num}${suffix}`
+    }
+  )
+
+  return fixed
 }
 
 function formatDate(iso) {
