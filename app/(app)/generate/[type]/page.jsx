@@ -112,24 +112,48 @@ function QuestionBankParams({ params, onChange }) {
 }
 
 function ExamPaperParams({ params, onChange }) {
-  // Official SCTE&VT Odisha pattern: 80 marks, 3 hrs, same structure for both types
-  // Q.1: All 10 × 2 = 20 | Q.2: Any 6 of 7 × 5 = 30 | Q.3–Q.7: attempt any 3 × 10 = 30
   const EXAM_TYPES = [
-    { value: 'end_semester', label: 'End-Semester', marks: 80, duration: 180, pattern: 'Q.1(2×10) + Q.2(6×5) + Q.3–Q.7(3×10) = 80 Marks' },
-    { value: 'mid_semester', label: 'Mid-Semester', marks: 80, duration: 180, pattern: 'Q.1(2×10) + Q.2(6×5) + Q.3–Q.7(3×10) = 80 Marks' },
+    {
+      value:    'end_semester',
+      label:    'End-Semester',
+      marks:    80,
+      duration: 180,
+      pattern:  'Q.1(2×10) + Q.2(6×5) + Q.3–Q.7(3×10) = 80 Marks',
+      details: [
+        'Q.1 — All 10 sub-parts (a–j), 2 marks each = 20',
+        'Q.2 — Any 6 of 7 sub-parts (a–g), 5 marks each = 30',
+        'Q.3 to Q.7 — Long/Numerical, attempt any 3 × 10 = 30',
+      ],
+      durationLabel: '3 Hrs',
+    },
+    {
+      value:    'mid_semester',
+      label:    'Mid-Semester',
+      marks:    50,
+      duration: 90,
+      pattern:  'Q.1(2×5) + Q.2(4×5) + Q.3–Q.5(2×10) = 50 Marks',
+      details: [
+        'Q.1 — All 5 sub-parts (a–e), 2 marks each = 10',
+        'Q.2 — Any 4 of 5 sub-parts (a–e), 5 marks each = 20',
+        'Q.3 to Q.5 — Long/Numerical, attempt any 2 × 10 = 20',
+      ],
+      durationLabel: '1½ Hrs',
+    },
   ]
 
   function setExamType(et) {
     const found = EXAM_TYPES.find(x => x.value === et)
+    // Marks and duration are locked to the exam type — not user-editable
     onChange({
       ...params,
       exam_type:     et,
-      total_marks:   found?.marks    ?? 80,
-      duration_mins: found?.duration ?? 180,
+      total_marks:   found.marks,
+      duration_mins: found.duration,
     })
   }
 
-  const selected = EXAM_TYPES.find(x => x.value === (params.exam_type ?? 'end_semester'))
+  const activeType = params.exam_type ?? 'end_semester'
+  const selected   = EXAM_TYPES.find(x => x.value === activeType) ?? EXAM_TYPES[0]
 
   return (
     <div className="space-y-4">
@@ -142,13 +166,13 @@ function ExamPaperParams({ params, onChange }) {
               type="button"
               onClick={() => setExamType(et.value)}
               className={`flex flex-col items-start p-3 rounded-xl border text-left transition-colors ${
-                (params.exam_type ?? 'end_semester') === et.value
+                activeType === et.value
                   ? 'bg-teal text-white border-teal'
                   : 'bg-bg border-border text-text hover:border-teal'
               }`}
             >
               <span className="text-sm font-semibold">{et.label}</span>
-              <span className={`text-xs mt-0.5 ${(params.exam_type ?? 'end_semester') === et.value ? 'text-white/80' : 'text-muted'}`}>
+              <span className={`text-xs mt-0.5 ${activeType === et.value ? 'text-white/80' : 'text-muted'}`}>
                 {et.pattern}
               </span>
             </button>
@@ -156,32 +180,41 @@ function ExamPaperParams({ params, onChange }) {
         </div>
       </div>
 
-      {/* Info banner showing the exact SCTE&VT pattern */}
-      <div className="bg-teal-light border border-teal/30 rounded-xl px-4 py-3 text-xs text-teal space-y-0.5">
-        <p className="font-semibold text-navy">SCTE&VT Official Pattern (80 Marks / 3 Hrs)</p>
-        <p className="text-muted">Q.1 — All 10 sub-parts (a–j), 2 marks each = 20</p>
-        <p className="text-muted">Q.2 — Any 6 of 7 sub-parts (a–g), 5 marks each = 30</p>
-        <p className="text-muted">Q.3 to Q.7 — Long/Numerical, attempt any 3 × 10 = 30</p>
+      {/* Info banner — dynamic based on selected type */}
+      <div className="bg-teal-light border border-teal/30 rounded-xl px-4 py-3 text-xs space-y-0.5">
+        <p className="font-semibold text-navy">
+          SCTE&VT Official Pattern — {selected.label} ({selected.marks} Marks / {selected.durationLabel})
+        </p>
+        {selected.details.map((line, i) => (
+          <p key={i} className="text-muted">{line}</p>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Locked values — read-only display, not editable inputs */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-muted mb-1">Total Marks</label>
-          <input
-            type="number"
-            value={params.total_marks ?? selected?.marks ?? 80}
-            onChange={e => onChange({ ...params, total_marks: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
-          />
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-bg/60 min-h-[44px]">
+            <span className="text-sm font-semibold text-navy">{selected.marks}</span>
+            <span className="text-xs text-muted ml-auto flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              Fixed
+            </span>
+          </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-muted mb-1">Duration (minutes)</label>
-          <input
-            type="number"
-            value={params.duration_mins ?? selected?.duration ?? 180}
-            onChange={e => onChange({ ...params, duration_mins: Number(e.target.value) })}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none min-h-[44px]"
-          />
+          <label className="block text-xs font-medium text-muted mb-1">Duration</label>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-bg/60 min-h-[44px]">
+            <span className="text-sm font-semibold text-navy">{selected.duration} min</span>
+            <span className="text-xs text-muted ml-auto flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              Fixed
+            </span>
+          </div>
         </div>
       </div>
     </div>
