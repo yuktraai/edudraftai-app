@@ -71,9 +71,11 @@ export async function POST(request) {
       if (result.error) {
         logger.error('[send-meet-link] Batch rejected', result.error)
       } else {
-        const results = result.data ?? []
-        results.forEach(r => { if (r?.id) sent++ })
-        if (results.length < chunk.length) sent += chunk.length - results.length
+        // result.data is { data: [{ id }, ...] } in Resend SDK v3+
+        const results = result.data?.data ?? result.data ?? []
+        const arr = Array.isArray(results) ? results : []
+        arr.forEach(r => { if (r?.id) sent++ })
+        if (arr.length < chunk.length) sent += chunk.length - arr.length
       }
 
       // Mark this chunk as sent in DB (regardless of individual failures — prevents re-spam)

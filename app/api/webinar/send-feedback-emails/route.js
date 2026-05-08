@@ -86,9 +86,9 @@ export async function POST(request) {
         if (!firstError.message) firstError.message = result.error.message ?? JSON.stringify(result.error)
         logger.error('[send-feedback-emails] Batch rejected', result.error)
       } else {
-        // result.data is an array of { id } or { error } per email
-        const results = result.data ?? []
-        results.forEach((r, idx) => {
+        // result.data is { data: [{ id }, ...] } in Resend SDK v3+
+        const results = result.data?.data ?? result.data ?? []
+        ;(Array.isArray(results) ? results : []).forEach((r, idx) => {
           if (r?.id) {
             sent++
           } else {
