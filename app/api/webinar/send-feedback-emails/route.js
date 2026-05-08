@@ -20,21 +20,32 @@ export async function POST(request) {
       .from('webinars').select('id,title,slug').eq('id', webinarId).single()
     if (!webinar) return Response.json({ error: 'Webinar not found' }, { status: 404 })
 
-    const { data: regs } = await adminSupabase
+    const { data: regs, error: regsError } = await adminSupabase
       .from('webinar_registrations')
       .select('id, name, email, feedback_token')
       .eq('webinar_id', webinarId)
 
+    if (regsError) {
+      logger.error('[send-feedback-emails] DB error fetching regs', regsError)
+      return Response.json({ error: `DB error: ${regsError.message}` }, { status: 500 })
+    }
+
+    if (!regs || regs.length === 0) {
+      return Response.json({ error: 'No registrants found for this webinar.' }, { status: 404 })
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://edudraftai.com'
-    let sent = 0
+    let sent   = 0
+    let failed = 0
+    const failedEmails = []
     const BATCH = 50
 
-    for (let i = 0; i < (regs ?? []).length; i += BATCH) {
+    for (let i = 0; i < regs.length; i += BATCH) {
       const batch = regs.slice(i, i + BATCH)
       await Promise.all(batch.map(async reg => {
         const feedbackUrl = `${appUrl}/webinar/${webinar.slug}/feedback?token=${reg.feedback_token}`
         try {
-          await resend.emails.send({
+          const result = await resend.emails.send({
             from: `EduDraftAI <${process.env.RESEND_FROM_EMAIL}>`,
             to: reg.email,
             subject: `Share your feedback — ${webinar.title}`,
@@ -47,7 +58,7 @@ export async function POST(request) {
                 <h2 style="color:#0D1F3C;margin:0 0 12px">Thank you for attending, ${reg.name}!</h2>
                 <p style="color:#718096;margin:0 0 28px">Your feedback helps us make EduDraftAI better for lecturers across India. It takes less than 2 minutes.</p>
                 <a href="${feedbackUrl}" style="display:inline-block;background:#00B4A6;color:#fff;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px">Submit Feedback →</a>
-                <p style="color:#a0aec0;font-size:12px;margin:24px 0 20px">This link is unique to you and can only be used once.</p>
+                <p style="color:#a0aec0;font-size:12px;margin:24px 0 20px">This link is unique to you and expires once submitted.</p>
                 <table width="100%" cellpadding="14" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #86efac"><tr><td style="text-align:center">
                   <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#16a34a">📱 Join our WhatsApp Community</p>
                   <p style="margin:0 0 10px;font-size:13px;color:#4a5568">Stay connected for product updates, tips, and announcements.</p>
@@ -60,16 +71,40 @@ export async function POST(request) {
               </table>
             </body></html>`,
           })
-          sent++
+          // Resend returns { id } on success, { error } on failure
+          if (result?.error) {
+            failed++
+            failedEmails.push({ email: reg.email, reason: result.error.message ?? JSON.stringify(result.error) })
+            logger.error('[send-feedback-emails] Resend rejected', reg.email, result.error)
+          } else {
+            sent++
+          }
         } catch (e) {
-          logger.error('[send-feedback-emails] Failed for', reg.email, e.message)
+          failed++
+          failedEmails.push({ email: reg.email, reason: e.message })
+          logger.error('[send-feedback-emails] Exception for', reg.email, e.message)
         }
       }))
 
       if (i + BATCH < regs.length) await new Promise(r => setTimeout(r, 200))
     }
 
-    return Response.json({ success: true, sent })
+    // If nothing went out at all, return a 500 so the UI shows an error
+    if (sent === 0 && failed > 0) {
+      const sample = failedEmails[0]?.reason ?? 'Unknown Resend error'
+      return Response.json({
+        error: `All ${failed} email(s) failed to send. First error: ${sample}`,
+        failedEmails,
+      }, { status: 500 })
+    }
+
+    return Response.json({
+      success: true,
+      sent,
+      failed,
+      total: regs.length,
+      ...(failedEmails.length > 0 && { failedEmails }),
+    })
   } catch (err) {
     logger.error('[POST /api/webinar/send-feedback-emails]', err)
     return Response.json({ error: err.message }, { status: 500 })

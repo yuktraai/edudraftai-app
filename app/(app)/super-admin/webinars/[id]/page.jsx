@@ -103,7 +103,7 @@ export default function EditWebinarPage() {
   }
 
   async function handleSendFeedback() {
-    if (!confirm('Send feedback emails to all registrants?')) return
+    if (!confirm('Send feedback emails to all registrants? You can send multiple times.')) return
     setFbSending(true); setFbResult(null); setError(null)
     try {
       const res  = await fetch('/api/webinar/send-feedback-emails', {
@@ -112,8 +112,14 @@ export default function EditWebinarPage() {
         body:    JSON.stringify({ webinarId: id }),
       })
       const json = await res.json()
-      if (!res.ok) setError(json.error ?? 'Failed')
-      else setFbResult(`Sent to ${json.sent} registrants`)
+      if (!res.ok) {
+        setError(json.error ?? 'Failed to send feedback emails')
+      } else {
+        const msg = json.failed > 0
+          ? `✅ Sent to ${json.sent} of ${json.total} registrants (${json.failed} failed — check Resend logs)`
+          : `✅ Sent to all ${json.sent} registrants`
+        setFbResult(msg)
+      }
     } catch { setError('Network error') }
     finally   { setFbSending(false) }
   }
