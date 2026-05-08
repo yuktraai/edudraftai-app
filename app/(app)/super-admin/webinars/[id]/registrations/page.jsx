@@ -4,17 +4,99 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
+function StarRating({ rating }) {
+  return (
+    <span className="inline-flex gap-0.5">
+      {[1,2,3,4,5].map(n => (
+        <svg key={n} className={`w-4 h-4 ${n <= rating ? 'text-yellow-400' : 'text-border'}`} fill="currentColor" viewBox="0 0 20 20">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+    </span>
+  )
+}
+
+function FeedbackModal({ reg, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-surface rounded-2xl border border-border shadow-2xl w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-navy">{reg.name}</h2>
+            <p className="text-sm text-muted">{reg.email}</p>
+            {reg.college && <p className="text-xs text-muted mt-0.5">{reg.college}{reg.city ? ` · ${reg.city}` : ''}</p>}
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-navy transition-colors mt-0.5">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {reg.feedback_submitted ? (
+          <div className="space-y-4">
+            {/* Rating */}
+            <div className="flex items-center justify-between py-3 px-4 bg-bg rounded-xl border border-border">
+              <span className="text-sm font-medium text-text">Overall Rating</span>
+              <div className="flex items-center gap-2">
+                <StarRating rating={reg.feedback_rating} />
+                <span className="text-sm font-bold text-navy">{reg.feedback_rating}/5</span>
+              </div>
+            </div>
+
+            {/* Yes/No questions */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="py-3 px-4 bg-bg rounded-xl border border-border text-center">
+                <p className="text-xs text-muted mb-1">Found Useful?</p>
+                <p className={`text-sm font-bold ${reg.feedback_found_useful ? 'text-success' : reg.feedback_found_useful === false ? 'text-error' : 'text-muted'}`}>
+                  {reg.feedback_found_useful === null ? '—' : reg.feedback_found_useful ? '✓ Yes' : '✗ No'}
+                </p>
+              </div>
+              <div className="py-3 px-4 bg-bg rounded-xl border border-border text-center">
+                <p className="text-xs text-muted mb-1">Would Recommend?</p>
+                <p className={`text-sm font-bold ${reg.feedback_would_recommend ? 'text-success' : reg.feedback_would_recommend === false ? 'text-error' : 'text-muted'}`}>
+                  {reg.feedback_would_recommend === null ? '—' : reg.feedback_would_recommend ? '✓ Yes' : '✗ No'}
+                </p>
+              </div>
+            </div>
+
+            {/* Comment */}
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Comment</p>
+              {reg.feedback_comment
+                ? <p className="text-sm text-text bg-bg border border-border rounded-xl px-4 py-3 leading-relaxed">{reg.feedback_comment}</p>
+                : <p className="text-sm text-muted italic">No comment left.</p>
+              }
+            </div>
+
+            {/* Submitted at */}
+            {reg.feedback_at && (
+              <p className="text-xs text-muted text-right">
+                Submitted {new Date(reg.feedback_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-muted text-sm">This participant has not submitted feedback yet.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function WebinarRegistrationsPage() {
   const params = useParams()
-  const slug   = params.id  // Note: this is actually the webinar ID, we fetch by ID then get slug
+  const slug   = params.id
 
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(null)
-  const [search,  setSearch]  = useState('')
-
-  // First get the webinar slug from the list
-  const [webinar, setWebinar] = useState(null)
+  const [data,       setData]       = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(null)
+  const [search,     setSearch]     = useState('')
+  const [webinar,    setWebinar]    = useState(null)
+  const [selected,   setSelected]   = useState(null)   // reg opened in modal
 
   useEffect(() => {
     fetch('/api/super-admin/webinars')
@@ -146,7 +228,11 @@ export default function WebinarRegistrationsPage() {
             </thead>
             <tbody>
               {filtered.map((r, i) => (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-bg/50 transition-colors">
+                <tr
+                  key={r.id}
+                  onClick={() => setSelected(r)}
+                  className="border-b border-border last:border-0 hover:bg-bg/50 transition-colors cursor-pointer"
+                >
                   <td className="px-5 py-3.5 text-muted text-xs">{i + 1}</td>
                   <td className="px-4 py-3.5">
                     <p className="font-medium text-navy">{r.name}</p>
@@ -162,10 +248,14 @@ export default function WebinarRegistrationsPage() {
                     }
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    {r.feedback_submitted
-                      ? <span className="text-success text-xs font-medium">✓ {r.feedback_rating}★</span>
-                      : <span className="text-muted text-xs">—</span>
-                    }
+                    {r.feedback_submitted ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
+                        <StarRating rating={r.feedback_rating} />
+                        <span>{r.feedback_rating}★</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted text-xs">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3.5 text-xs text-muted whitespace-nowrap">
                     {new Date(r.registered_at).toLocaleDateString('en-IN', {
@@ -176,8 +266,14 @@ export default function WebinarRegistrationsPage() {
               ))}
             </tbody>
           </table>
+          <p className="text-xs text-muted text-center py-3 border-t border-border">
+            Click any row to view participant details and feedback
+          </p>
         </div>
       )}
+
+      {/* Feedback detail modal */}
+      {selected && <FeedbackModal reg={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

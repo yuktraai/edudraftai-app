@@ -26,27 +26,37 @@ export async function GET(request, { params }) {
 
     const { data: feedbacks } = await adminSupabase
       .from('webinar_feedback')
-      .select('registration_id, rating')
+      .select('registration_id, rating, found_useful, would_recommend, comment, created_at')
       .eq('webinar_id', webinar.id)
 
     const feedbackMap = new Map((feedbacks ?? []).map(f => [f.registration_id, f]))
 
-    const rows = (regs ?? []).map(r => ({
-      ...r,
-      feedback_submitted: feedbackMap.has(r.id),
-      feedback_rating: feedbackMap.get(r.id)?.rating ?? null,
-    }))
+    const rows = (regs ?? []).map(r => {
+      const fb = feedbackMap.get(r.id)
+      return {
+        ...r,
+        feedback_submitted:    !!fb,
+        feedback_rating:       fb?.rating        ?? null,
+        feedback_found_useful: fb?.found_useful  ?? null,
+        feedback_would_recommend: fb?.would_recommend ?? null,
+        feedback_comment:      fb?.comment       ?? null,
+        feedback_at:           fb?.created_at    ?? null,
+      }
+    })
 
     const { searchParams } = new URL(request.url)
     if (searchParams.get('format') === 'csv') {
       const csv = [
-        ['Name','Email','Role','College','City','Registered At','Meeting Link Sent','Feedback Submitted','Rating'],
+        ['Name','Email','Role','College','City','Registered At','Meeting Link Sent','Feedback Submitted','Rating','Found Useful','Would Recommend','Comment'],
         ...rows.map(r => [
           r.name, r.email, r.role, r.college, r.city ?? '',
           new Date(r.registered_at).toLocaleString('en-IN'),
           r.meet_link_sent ? 'Yes' : 'No',
           r.feedback_submitted ? 'Yes' : 'No',
           r.feedback_rating ?? '',
+          r.feedback_found_useful === null ? '' : r.feedback_found_useful ? 'Yes' : 'No',
+          r.feedback_would_recommend === null ? '' : r.feedback_would_recommend ? 'Yes' : 'No',
+          r.feedback_comment ?? '',
         ])
       ].map(row => row.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n')
 
