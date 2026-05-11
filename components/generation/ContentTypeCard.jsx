@@ -31,6 +31,12 @@ const ICONS = {
         d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
     </svg>
   ),
+  diagram: (
+    <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round"
+        d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+    </svg>
+  ),
 }
 
 const META = {
@@ -58,21 +64,35 @@ const META = {
     title:       'Exam Paper',
     description: 'Full SCTE&VT 80-mark pattern — Q.1 (Very Short ×10), Q.2 (Short ×7, attempt 6), Q.3–Q.7 (Long, attempt 3). Right-margin marks. Answer key included.',
     tag:         'Exam',
+    isNew:       false,
+  },
+  diagram: {
+    title:       'Diagram',
+    description: 'Block diagrams, flowcharts & system overviews for any topic. Renders instantly — export as SVG or PNG.',
+    tag:         'Visual',
+    isNew:       true,
+    href:        '/generate/diagram',
   },
 }
 
 export function ContentTypeCard({ type }) {
-  const { title, description, tag } = META[type]
+  const { title, description, tag, isNew, href } = META[type]
+  const link = href ?? `/generate/${type}`
   return (
-    <Link href={`/generate/${type}`} className="group block">
+    <Link href={link} className="group block">
       <div className="h-full bg-surface border border-border rounded-xl p-6 hover:border-teal hover:shadow-md transition-all duration-200 flex flex-col gap-4">
         <div className="flex items-start justify-between">
           <div className="w-12 h-12 rounded-xl bg-teal-light flex items-center justify-center text-teal group-hover:bg-teal group-hover:text-white transition-colors">
             {ICONS[type]}
           </div>
-          <span className="text-xs font-medium text-muted bg-bg border border-border px-2 py-1 rounded-full">
-            {tag}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {isNew && (
+              <span className="text-xs font-semibold bg-teal text-white px-2 py-0.5 rounded-full">New</span>
+            )}
+            <span className="text-xs font-medium text-muted bg-bg border border-border px-2 py-1 rounded-full">
+              {tag}
+            </span>
+          </div>
         </div>
         <div className="flex-1">
           <h3 className="font-heading font-bold text-navy text-lg mb-1">{title}</h3>

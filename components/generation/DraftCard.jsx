@@ -6,6 +6,7 @@ const TYPE_META = {
   question_bank: { label: 'Question Bank',   color: 'bg-amber-50 text-amber-700 border-amber-200' },
   test_plan:     { label: 'Internal Test',   color: 'bg-teal-light text-teal border-teal' },
   exam_paper:    { label: 'Exam Paper',      color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  diagram:       { label: 'Diagram',         color: 'bg-violet-50 text-violet-700 border-violet-200' },
 }
 
 const MODEL_LABELS = {

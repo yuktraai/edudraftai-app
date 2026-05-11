@@ -7,6 +7,7 @@ import { FeedbackBar } from '@/components/generation/FeedbackBar'
 import { splitAnswerKey } from '@/lib/export/parseAnswerKey'
 import { toPlainText } from '@/lib/export/plainText'
 import { VersionHistoryDrawer } from '@/components/generation/VersionHistoryDrawer'
+import { DiagramViewer } from '@/components/generation/DiagramViewer'
 
 const TYPE_META = {
   lesson_notes:  { label: 'Lesson Notes',   color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -14,6 +15,7 @@ const TYPE_META = {
   question_bank: { label: 'Question Bank',   color: 'bg-amber-50 text-amber-700 border-amber-200' },
   test_plan:     { label: 'Internal Test',   color: 'bg-teal-light text-teal border-teal' },
   exam_paper:    { label: 'Exam Paper',      color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  diagram:       { label: 'Diagram',         color: 'bg-violet-50 text-violet-700 border-violet-200' },
 }
 
 const MODEL_LABELS = {
@@ -293,6 +295,37 @@ export default function DraftDetailPage() {
   const semester   = draft.subjects?.semester
   const words      = estimateWords(draft.raw_output)
   const model      = MODEL_LABELS[draft.ai_model] ?? draft.ai_model ?? '—'
+
+  // ── Diagram branch ────────────────────────────────────────────────────────
+  if (draft.content_type === 'diagram') {
+    return (
+      <div className="p-6 max-w-4xl space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <button onClick={() => router.push('/drafts')} className="hover:text-navy transition-colors">← Drafts</button>
+          <span>/</span>
+          <span className="text-navy font-medium">{topic}</span>
+        </div>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${meta.color}`}>{meta.label}</span>
+            </div>
+            <h1 className="font-heading text-xl font-bold text-navy">{topic}</h1>
+            <p className="text-sm text-muted mt-0.5">{subject}{semester ? ` · Sem ${semester}` : ''} · {formatDate(draft.created_at)}</p>
+          </div>
+        </div>
+        <DiagramViewer
+          mermaidCode={draft.raw_output}
+          generationId={draft.id}
+          diagramType={draft.metadata?.diagram_type}
+        />
+        <p className="text-xs text-muted text-center pt-2">
+          DOCX export is not available for diagrams — use SVG or PNG export above.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <>
