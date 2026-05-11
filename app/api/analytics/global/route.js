@@ -87,7 +87,7 @@ export async function GET(request) {
     })
 
     // ── Current period aggregations ─────────────────────────────────────────────
-    const platform_by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0 }
+    const platform_by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0, diagram: 0 }
     let rag_generations = 0
     allGens.forEach(g => {
       if (platform_by_type[g.content_type] !== undefined) platform_by_type[g.content_type]++

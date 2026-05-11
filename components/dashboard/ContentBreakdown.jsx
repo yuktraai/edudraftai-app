@@ -51,6 +51,16 @@ const TYPES = [
       </svg>
     ),
   },
+  {
+    key:  'diagram',
+    label: 'Diagram',
+    href:  '/generate/diagram',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
 ]
 
 export function ContentBreakdown({ byType, total }) {
@@ -58,7 +68,7 @@ export function ContentBreakdown({ byType, total }) {
     <div className="bg-surface border border-border rounded-2xl p-5"
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       <h2 className="text-sm font-bold text-navy mb-4">Content Breakdown</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {TYPES.map(({ key, label, href, icon }) => {
           const count = byType[key] ?? 0
           const pct   = total > 0 ? Math.round((count / total) * 100) : 0

@@ -32,7 +32,7 @@ export async function GET() {
       const d = new Date(since)
       d.setDate(d.getDate() + i)
       const key = d.toISOString().slice(0, 10)
-      map[key] = { date: key, lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0, total: 0 }
+      map[key] = { date: key, lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0, diagram: 0, total: 0 }
     }
 
     for (const row of data ?? []) {

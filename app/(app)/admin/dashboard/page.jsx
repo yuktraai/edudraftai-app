@@ -174,6 +174,8 @@ const TYPE_META = {
   mcq_bank:      { label: 'MCQ Bank',      color: '#00B4A6' },
   question_bank: { label: 'Question Bank', color: '#38A169' },
   test_plan:     { label: 'Internal Test', color: '#DD6B20' },
+  exam_paper:    { label: 'Exam Paper',    color: '#EF4444' },
+  diagram:       { label: 'Diagram',       color: '#8B5CF6' },
 }
 
 export default function AdminDashboardPage() {

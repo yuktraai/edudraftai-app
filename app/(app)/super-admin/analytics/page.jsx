@@ -19,6 +19,7 @@ const TYPE_META = {
   question_bank: { label: 'Question Bank', icon: '📋', color: '#F59E0B', tailwind: 'text-amber-600',  bg: 'bg-amber-50',     border: 'border-amber-200'  },
   test_plan:     { label: 'Internal Test', icon: '🗓', color: '#10B981', tailwind: 'text-emerald-600', bg: 'bg-emerald-50',   border: 'border-emerald-200'},
   exam_paper:    { label: 'Exam Paper',    icon: '📄', color: '#EF4444', tailwind: 'text-red-600',     bg: 'bg-red-50',       border: 'border-red-200'    },
+  diagram:       { label: 'Diagram',       icon: '🔷', color: '#8B5CF6', tailwind: 'text-violet-600',  bg: 'bg-violet-50',    border: 'border-violet-200' },
 }
 
 const RANGE_OPTIONS = [

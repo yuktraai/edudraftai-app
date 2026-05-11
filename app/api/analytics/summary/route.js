@@ -62,7 +62,7 @@ export async function GET(request) {
     const rows = mainResult.data ?? []
 
     // by_type breakdown
-    const by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0 }
+    const by_type = { lesson_notes: 0, mcq_bank: 0, question_bank: 0, test_plan: 0, exam_paper: 0, diagram: 0 }
     rows.forEach(r => { if (by_type[r.content_type] !== undefined) by_type[r.content_type]++ })
 
     // total credits used

@@ -11,6 +11,7 @@ const TYPE_COLORS = {
   question_bank: '#DD6B20',
   test_plan:     '#38A169',
   exam_paper:    '#6366f1',
+  diagram:       '#8B5CF6',
 }
 
 const TYPE_LABELS = {
@@ -19,6 +20,7 @@ const TYPE_LABELS = {
   question_bank: 'Question Bank',
   test_plan:     'Internal Test',
   exam_paper:    'Exam Paper',
+  diagram:       'Diagram',
 }
 
 function CustomTooltip({ active, payload, label }) {
@@ -120,7 +122,7 @@ export function ActivityChart() {
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,180,166,0.06)' }} />
             {Object.entries(TYPE_COLORS).map(([key, color]) => (
-              <Bar key={key} dataKey={key} stackId="a" fill={color} radius={key === 'exam_paper' ? [3,3,0,0] : [0,0,0,0]} />
+              <Bar key={key} dataKey={key} stackId="a" fill={color} radius={key === 'diagram' ? [3,3,0,0] : [0,0,0,0]} />
             ))}
           </BarChart>
         </ResponsiveContainer>
