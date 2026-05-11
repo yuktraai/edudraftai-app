@@ -97,23 +97,29 @@ function renderContent(text) {
   const blockSlots  = []   // display math  \[...\]
   const inlineSlots = []   // inline math    \(...\)
 
-  // Pre-normalize: wrap bare \begin{array}...\end{array} (truth tables) in \[...\]
-  // if the AI forgot to add the display math delimiters
+  function renderBlock(formula) {
+    try {
+      return '<div class="katex-block">' + katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false, output: 'html' }) + '</div>'
+    } catch {
+      return `<div class="katex-block math-error"><code>${formula.trim()}</code></div>`
+    }
+  }
+
   let safe = text
-    .replace(/(^|\n)([ \t]*\\begin\{(?:array|matrix|pmatrix|bmatrix|vmatrix|cases)\}[\s\S]*?\\end\{(?:array|matrix|pmatrix|bmatrix|vmatrix|cases)\})/g,
-      (_, pre, block) => `${pre}\\[\n${block}\n\\]`
-    )
-    // Block math first (may span multiple lines)
+    // 1. Extract already-wrapped \[...\] blocks first (including \begin{array} inside them)
     .replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => {
       const idx = blockSlots.length
-      try {
-        blockSlots.push('<div class="katex-block">' + katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false, output: 'html' }) + '</div>')
-      } catch {
-        blockSlots.push(`<div class="katex-block math-error"><code>\\[${formula.trim()}\\]</code></div>`)
-      }
+      blockSlots.push(renderBlock(formula))
       return `%%BMATH_${idx}%%`
     })
-    // Inline math
+    // 2. Catch any remaining bare \begin{array}...\end{array} NOT already wrapped in \[...\]
+    //    (older AI outputs that skipped the \[...\] delimiters)
+    .replace(/[ \t]*\\begin\{(array|matrix|pmatrix|bmatrix|vmatrix|cases)\}[\s\S]*?\\end\{\1\}/g, block => {
+      const idx = blockSlots.length
+      blockSlots.push(renderBlock(block))
+      return `%%BMATH_${idx}%%`
+    })
+    // 3. Inline math
     .replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => {
       const idx = inlineSlots.length
       try {
