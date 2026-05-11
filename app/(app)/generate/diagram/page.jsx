@@ -171,10 +171,16 @@ export default function DiagramGeneratePage() {
         {/* Left: TopicPicker */}
         <div className="lg:col-span-2">
           <TopicPicker
-            onSelect={({ subjectId: sid, chunkId: cid, topicLabel: tl }) => {
-              setSubjectId(sid)
-              setChunkId(cid ?? null)
-              setTopicLabel(tl ?? '')
+            onChange={(selection) => {
+              if (!selection) {
+                setSubjectId(null)
+                setChunkId(null)
+                setTopicLabel('')
+                return
+              }
+              setSubjectId(selection.subject_id ?? null)
+              setChunkId(selection.chunk_id ?? null)
+              setTopicLabel(selection.topic ?? selection.subject_name ?? '')
               setResult(null)
               setError(null)
             }}
@@ -291,7 +297,7 @@ export default function DiagramGeneratePage() {
             <button
               onClick={handleGenerate}
               disabled={loading || !subjectId}
-              className="w-full py-3 bg-teal text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 text-sm"
+              className="w-full py-3 bg-teal text-white font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -303,6 +309,11 @@ export default function DiagramGeneratePage() {
                 </span>
               ) : 'Generate Diagram →'}
             </button>
+            {!subjectId && !loading && (
+              <p className="text-xs text-muted text-center">
+                ← Select a subject and topic on the left to enable generation
+              </p>
+            )}
           </div>
         </div>
       </div>
