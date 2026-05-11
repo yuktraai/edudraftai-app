@@ -4,10 +4,12 @@ import { WebinarStatusBadge } from '@/components/webinar/WebinarStatusBadge'
 import { CountdownTimer } from '@/components/webinar/CountdownTimer'
 import { RegistrationForm } from '@/components/webinar/RegistrationForm'
 import Link from 'next/link'
+import { unstable_noStore as noStore } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }) {
+  noStore()
   const { data } = await adminSupabase
     .from('webinars')
     .select('title,tagline')
@@ -50,6 +52,7 @@ function buildISTDatetime(date, timeIST) {
 }
 
 export default async function WebinarDetailPage({ params }) {
+  noStore()
   const { data: webinar } = await adminSupabase
     .from('webinars')
     .select('*')

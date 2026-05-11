@@ -1,11 +1,13 @@
 import { adminSupabase } from '@/lib/supabase/admin'
 import { WebinarCard } from '@/components/webinar/WebinarCard'
 import Link from 'next/link'
+import { unstable_noStore as noStore } from 'next/cache'
 
 export const dynamic  = 'force-dynamic'
 export const metadata = { title: 'Webinars — EduDraftAI' }
 
 export default async function WebinarListPage() {
+  noStore()
   const { data: webinars } = await adminSupabase
     .from('webinars')
     .select('id, slug, title, tagline, date, time_ist, duration_mins, status, max_registrations')
