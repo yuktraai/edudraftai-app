@@ -6,6 +6,7 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildDiagramPrompt } from '@/lib/ai/prompts/diagram'
 import { extractMermaidCode } from '@/lib/ai/validate-diagram'
+import { checkDiagramFocus } from '@/lib/ai/diagram-guard'
 
 const openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -87,6 +88,21 @@ export async function POST(request) {
   const totalBalance = (balance ?? 0) + personalBalance + demoCreditsRemaining
   if (totalBalance <= 0)
     return Response.json({ error: 'You have no credits remaining. Contact your college admin.', code: 'NO_CREDITS' }, { status: 402 })
+
+  // ── 4b. Validate focus_description against prompt injection / off-topic ────
+  if (focus_description) {
+    const guard = await checkDiagramFocus(focus_description, subject.name, subject.name)
+    if (!guard.valid) {
+      return Response.json(
+        {
+          error: `Your diagram focus description doesn't seem to be an engineering topic. Please describe what the diagram should show — for example: "All stages of an AM receiver" or "Boot sequence of a microcontroller".`,
+          code:  'INVALID_FOCUS_DESCRIPTION',
+          reason: guard.reason,
+        },
+        { status: 422 },
+      )
+    }
+  }
 
   // ── 5. Fetch syllabus chunk (optional) ────────────────────────────────────
   let topic    = focus_description || subject.name
