@@ -25,7 +25,7 @@ const selectCls =
  * If no subtopics are selected, the full chunk subtopic list is emitted
  * (AI covers all of them).
  */
-export function TopicPicker({ onChange }) {
+export function TopicPicker({ onChange, singleSubtopic = false }) {
   // Data
   const [departments,  setDepartments]  = useState([])
   const [subjects,     setSubjects]     = useState([])
@@ -148,9 +148,15 @@ export function TopicPicker({ onChange }) {
   function handleSubtopicToggle(st) {
     const chunk = chunks.find(c => c.id === chunkId)
     setSelectedSubs(prev => {
-      const next = new Set(prev)
-      if (next.has(st))         next.delete(st)
-      else if (next.size < MAX_SUBTOPICS) next.add(st)
+      let next
+      if (singleSubtopic) {
+        // Radio behaviour: clicking the selected item deselects; clicking another replaces
+        next = prev.has(st) ? new Set() : new Set([st])
+      } else {
+        next = new Set(prev)
+        if (next.has(st))              next.delete(st)
+        else if (next.size < maxSubs)  next.add(st)
+      }
       emit(chunk, next)
       return next
     })
@@ -238,11 +244,14 @@ export function TopicPicker({ onChange }) {
     setSheetStep('subtopics')
   }
 
-  function sheetToggleSub(st, subtopics) {
+  function sheetToggleSub(st) {
     setTmpSubs(prev => {
+      if (singleSubtopic) {
+        return prev.has(st) ? new Set() : new Set([st])
+      }
       const next = new Set(prev)
-      if (next.has(st))                   next.delete(st)
-      else if (next.size < MAX_SUBTOPICS) next.add(st)
+      if (next.has(st))              next.delete(st)
+      else if (next.size < maxSubs)  next.add(st)
       return next
     })
   }
@@ -300,7 +309,8 @@ export function TopicPicker({ onChange }) {
   const subtopics      = selectedChunk?.subtopics ?? []
   const hasSubtopics   = subtopics.length > 0
   const selCount       = selectedSubs.size
-  const maxReached     = selCount >= MAX_SUBTOPICS
+  const maxSubs        = singleSubtopic ? 1 : MAX_SUBTOPICS
+  const maxReached     = selCount >= maxSubs
 
   // Summary text for mobile trigger button
   function buildSummary() {
@@ -333,7 +343,7 @@ export function TopicPicker({ onChange }) {
 
   const sheetChunkForSubs = sheetChunks.find(c => c.id === tmpChunkId) ?? chunks.find(c => c.id === tmpChunkId)
   const sheetSubtopics    = sheetChunkForSubs?.subtopics ?? []
-  const tmpSubsMaxReached = tmpSubs.size >= MAX_SUBTOPICS
+  const tmpSubsMaxReached = tmpSubs.size >= maxSubs
 
   if (error) return <p className="text-error text-sm">{error}</p>
 
@@ -426,9 +436,9 @@ export function TopicPicker({ onChange }) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-text">
-                Subtopics
+                {singleSubtopic ? 'Subtopic' : 'Subtopics'}
                 <span className="ml-2 text-xs font-normal text-muted">
-                  (select up to {MAX_SUBTOPICS})
+                  {singleSubtopic ? '(select one for precise diagram)' : `(select up to ${MAX_SUBTOPICS})`}
                 </span>
               </label>
               <div className="flex items-center gap-2">
@@ -451,7 +461,7 @@ export function TopicPicker({ onChange }) {
             <div className="border border-border rounded-xl overflow-hidden divide-y divide-border bg-surface">
               {subtopics.map((st, i) => {
                 const checked  = selectedSubs.has(st)
-                const disabled = maxReached && !checked
+                const disabled = !singleSubtopic && maxReached && !checked
                 return (
                   <label
                     key={i}
@@ -462,11 +472,11 @@ export function TopicPicker({ onChange }) {
                     }`}
                   >
                     <input
-                      type="checkbox"
+                      type={singleSubtopic ? 'radio' : 'checkbox'}
                       checked={checked}
                       disabled={disabled}
                       onChange={() => !disabled && handleSubtopicToggle(st)}
-                      className="w-4 h-4 rounded accent-teal shrink-0"
+                      className="w-4 h-4 accent-teal shrink-0"
                     />
                     <span className={`text-sm leading-snug ${checked ? 'text-teal font-medium' : 'text-text'}`}>
                       {st}
@@ -482,10 +492,12 @@ export function TopicPicker({ onChange }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
                 <span className="text-xs text-muted">
-                  No subtopics selected — AI will cover all {subtopics.length} subtopics of this unit.
+                  {singleSubtopic
+                    ? 'No subtopic selected — diagram will cover the full unit.'
+                    : `No subtopics selected — AI will cover all ${subtopics.length} subtopics of this unit.`}
                 </span>
               </div>
-            ) : maxReached ? (
+            ) : !singleSubtopic && maxReached ? (
               <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <svg className="w-3.5 h-3.5 text-warning shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -498,7 +510,9 @@ export function TopicPicker({ onChange }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs text-teal font-medium">
-                  AI will focus on {selCount} selected subtopic{selCount !== 1 ? 's' : ''}.
+                  {singleSubtopic
+                    ? `Diagram will focus exclusively on: ${[...selectedSubs][0]}`
+                    : `AI will focus on ${selCount} selected subtopic${selCount !== 1 ? 's' : ''}.`}
                 </span>
               </div>
             )}
@@ -720,7 +734,9 @@ export function TopicPicker({ onChange }) {
                 ) : (
                   <>
                     <div className="px-4 py-2.5 border-b border-border flex items-center justify-between bg-bg">
-                      <span className="text-xs text-muted">Select up to {MAX_SUBTOPICS} subtopics</span>
+                      <span className="text-xs text-muted">
+                        {singleSubtopic ? 'Select one subtopic for precise diagram' : `Select up to ${MAX_SUBTOPICS} subtopics`}
+                      </span>
                       {tmpSubs.size > 0 && (
                         <button
                           type="button"
@@ -734,7 +750,7 @@ export function TopicPicker({ onChange }) {
                     <ul className="divide-y divide-border">
                       {sheetSubtopics.map((st, i) => {
                         const checked  = tmpSubs.has(st)
-                        const disabled = tmpSubsMaxReached && !checked
+                        const disabled = !singleSubtopic && tmpSubsMaxReached && !checked
                         return (
                           <li key={i}>
                             <label
@@ -745,11 +761,11 @@ export function TopicPicker({ onChange }) {
                               }`}
                             >
                               <input
-                                type="checkbox"
+                                type={singleSubtopic ? 'radio' : 'checkbox'}
                                 checked={checked}
                                 disabled={disabled}
-                                onChange={() => !disabled && sheetToggleSub(st, sheetSubtopics)}
-                                className="w-5 h-5 rounded accent-teal shrink-0"
+                                onChange={() => !disabled && sheetToggleSub(st)}
+                                className="w-5 h-5 accent-teal shrink-0"
                               />
                               <span className={`text-sm leading-snug ${checked ? 'text-teal font-medium' : 'text-text'}`}>
                                 {st}
@@ -761,7 +777,9 @@ export function TopicPicker({ onChange }) {
                     </ul>
                     {tmpSubs.size === 0 && (
                       <div className="px-4 py-3 text-xs text-muted">
-                        No subtopics selected — AI will cover all {sheetSubtopics.length} subtopics.
+                        {singleSubtopic
+                          ? 'No subtopic selected — diagram will cover the full unit.'
+                          : `No subtopics selected — AI will cover all ${sheetSubtopics.length} subtopics.`}
                       </div>
                     )}
                   </>
@@ -779,7 +797,10 @@ export function TopicPicker({ onChange }) {
                   className="w-full py-3 rounded-xl bg-teal text-white text-sm font-semibold min-h-[48px] hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   Confirm Selection
-                  {tmpSubs.size > 0 && ` (${tmpSubs.size} subtopic${tmpSubs.size !== 1 ? 's' : ''})`}
+                  {tmpSubs.size > 0 && (singleSubtopic
+                    ? ` — ${[...tmpSubs][0].slice(0, 30)}${[...tmpSubs][0].length > 30 ? '…' : ''}`
+                    : ` (${tmpSubs.size} subtopic${tmpSubs.size !== 1 ? 's' : ''})`
+                  )}
                 </button>
               </div>
             )}

@@ -171,6 +171,7 @@ export default function DiagramGeneratePage() {
         {/* Left: TopicPicker */}
         <div className="lg:col-span-2">
           <TopicPicker
+            singleSubtopic={true}
             onChange={(selection) => {
               if (!selection) {
                 setSubjectId(null)
