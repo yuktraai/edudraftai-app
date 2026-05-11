@@ -49,8 +49,10 @@ export default async function WebinarDetailPage({ params }) {
     .select('id', { count: 'exact', head: true })
     .eq('webinar_id', webinar.id)
 
+  // Always format in IST — prevents UTC offset shifting date by 1 day
   const formattedDate = new Date(webinar.date).toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Kolkata',
   })
 
   const eventISO = buildISTDatetime(webinar.date, webinar.time_ist)

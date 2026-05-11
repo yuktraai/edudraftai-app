@@ -91,7 +91,7 @@ export default async function SuperAdminWebinarsPage() {
                     <p className="text-xs text-muted/70 mt-0.5 font-mono">/webinar/{w.slug}</p>
                   </td>
                   <td className="px-4 py-4 text-muted whitespace-nowrap">
-                    {new Date(w.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(w.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}
                     <br />
                     <span className="text-xs">{w.time_ist} IST</span>
                   </td>

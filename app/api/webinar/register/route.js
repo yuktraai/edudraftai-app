@@ -9,14 +9,17 @@ const schema = z.object({
   webinarId: z.string().uuid(),
   name:      z.string().min(2),
   email:     z.string().email(),
+  mobile:    z.string().max(20).optional(),
   role:      z.enum(['lecturer','hod','principal','student','other']),
   college:   z.string().min(2),
   city:      z.string().optional(),
 })
 
 function formatDate(dateStr) {
+  // Always format in IST — avoids UTC-offset shifting the day (e.g. '2026-05-16' showing as May 15)
   return new Date(dateStr).toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Kolkata',
   })
 }
 
@@ -85,7 +88,7 @@ export async function POST(request) {
     const parsed = schema.safeParse(body)
     if (!parsed.success) return Response.json({ error: parsed.error.flatten() }, { status: 400 })
 
-    const { webinarId, name, email, role, college, city } = parsed.data
+    const { webinarId, name, email, mobile, role, college, city } = parsed.data
 
     // Fetch webinar
     const { data: webinar, error: webinarErr } = await adminSupabase
@@ -109,7 +112,7 @@ export async function POST(request) {
     // Insert registration
     const { data: reg, error: insertErr } = await adminSupabase
       .from('webinar_registrations')
-      .insert({ webinar_id: webinarId, name, email, role, college, city: city ?? null })
+      .insert({ webinar_id: webinarId, name, email, mobile: mobile ?? null, role, college, city: city ?? null })
       .select('id, feedback_token')
       .single()
 
