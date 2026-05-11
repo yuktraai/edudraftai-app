@@ -89,7 +89,43 @@ function formatDate(iso) {
 
 function renderContent(text) {
   if (!text) return ''
-  let html = text
+
+  // ── Step 1: extract ALL math BEFORE paragraph processing ─────────────────────
+  // Critical: if we let paragraph processing run first, newlines inside
+  // \[...\] blocks get converted to </p><p>, injecting HTML into formulas
+  // and causing KaTeX to render "</p><p>" as math operators.
+  const blockSlots  = []   // display math  \[...\]
+  const inlineSlots = []   // inline math    \(...\)
+
+  // Pre-normalize: wrap bare \begin{array}...\end{array} (truth tables) in \[...\]
+  // if the AI forgot to add the display math delimiters
+  let safe = text
+    .replace(/(^|\n)([ \t]*\\begin\{(?:array|matrix|pmatrix|bmatrix|vmatrix|cases)\}[\s\S]*?\\end\{(?:array|matrix|pmatrix|bmatrix|vmatrix|cases)\})/g,
+      (_, pre, block) => `${pre}\\[\n${block}\n\\]`
+    )
+    // Block math first (may span multiple lines)
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => {
+      const idx = blockSlots.length
+      try {
+        blockSlots.push('<div class="katex-block">' + katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false, output: 'html' }) + '</div>')
+      } catch {
+        blockSlots.push(`<div class="katex-block math-error"><code>\\[${formula.trim()}\\]</code></div>`)
+      }
+      return `%%BMATH_${idx}%%`
+    })
+    // Inline math
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => {
+      const idx = inlineSlots.length
+      try {
+        inlineSlots.push(katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false, output: 'html' }))
+      } catch {
+        inlineSlots.push(`<span class="math-error">\\(${formula.trim()}\\)</span>`)
+      }
+      return `%%IMATH_${idx}%%`
+    })
+
+  // ── Step 2: markdown → HTML on the now-math-safe text ───────────────────────
+  let html = safe
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
@@ -99,18 +135,15 @@ function renderContent(text) {
     .replace(/(<li>.*<\/li>(\n|$))+/gs, m => `<ul>${m}</ul>`)
     .replace(/\n\n+/g, '</p><p>')
     .replace(/^(?!<[hulo])(.+)$/gm, line => line.trim() ? `<p>${line}</p>` : '')
-  // Block math: \[ ... \]
-  html = html.replace(/\\\[([\s\S]*?)\\\]/g, (_, formula) => {
-    try {
-      return '<div class="katex-block">' + katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false, output: 'html' }) + '</div>'
-    } catch { return `<div class="math-error">\\[${formula}\\]</div>` }
-  })
-  // Inline math: \( ... \)
-  html = html.replace(/\\\(([\s\S]*?)\\\)/g, (_, formula) => {
-    try {
-      return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false, output: 'html' })
-    } catch { return `<span class="math-error">\\(${formula}\\)</span>` }
-  })
+
+  // Block math placeholders may have been wrapped in <p>…</p> — unwrap them
+  html = html.replace(/<p>(%%BMATH_\d+%%)<\/p>/g, '$1')
+
+  // ── Step 3: restore math ─────────────────────────────────────────────────────
+  html = html
+    .replace(/%%BMATH_(\d+)%%/g,  (_, i) => blockSlots[+i]  ?? '')
+    .replace(/%%IMATH_(\d+)%%/g,  (_, i) => inlineSlots[+i] ?? '')
+
   return html
 }
 
