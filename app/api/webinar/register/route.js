@@ -15,12 +15,15 @@ const schema = z.object({
   city:      z.string().optional(),
 })
 
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAYS_LONG   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+
 function formatDate(dateStr) {
-  // Always format in IST — avoids UTC-offset shifting the day (e.g. '2026-05-16' showing as May 15)
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    timeZone: 'Asia/Kolkata',
-  })
+  // Parse 'YYYY-MM-DD' directly — no Date constructor to avoid UTC-midnight timezone shift
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dow = new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay()
+  return `${DAYS_LONG[dow]}, ${d} ${MONTHS_LONG[m - 1]} ${y}`
 }
 
 function buildConfirmationEmail({ name, webinar, feedbackToken }) {

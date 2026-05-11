@@ -17,6 +17,21 @@ export async function generateMetadata({ params }) {
   return { title: `${data.title} — EduDraftAI`, description: data.tagline }
 }
 
+const MONTHS_LONG = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAYS_LONG   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+
+/**
+ * Format a 'YYYY-MM-DD' date string without creating a Date from it.
+ * Avoids the UTC-midnight-to-local-timezone shift that shows May 16 as May 15.
+ */
+function formatDateSafe(dateStr) {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-').map(Number)
+  // Use UTC noon to get the correct weekday regardless of server timezone
+  const dow = new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay()
+  return `${DAYS_LONG[dow]}, ${d} ${MONTHS_LONG[m - 1]} ${y}`
+}
+
 function buildISTDatetime(date, timeIST) {
   // Parse timeIST like "8:00 PM" or "10:30 AM"
   const [time, meridiem] = timeIST.split(' ')
@@ -49,11 +64,7 @@ export default async function WebinarDetailPage({ params }) {
     .select('id', { count: 'exact', head: true })
     .eq('webinar_id', webinar.id)
 
-  // Always format in IST — prevents UTC offset shifting date by 1 day
-  const formattedDate = new Date(webinar.date).toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    timeZone: 'Asia/Kolkata',
-  })
+  const formattedDate = formatDateSafe(webinar.date)
 
   const eventISO = buildISTDatetime(webinar.date, webinar.time_ist)
   const isRegisterable = ['upcoming', 'live'].includes(webinar.status)
