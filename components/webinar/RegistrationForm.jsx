@@ -115,33 +115,32 @@ export function RegistrationForm({ webinarId, webinarSlug }) {
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1">Full Name *</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
-              placeholder="Your name"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1">Email Address *</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
-              placeholder="your@email.com"
-              required
-            />
-          </div>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-muted mb-1">Full Name *</label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            placeholder="Your name"
+            required
+          />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-muted mb-1">Email Address *</label>
+          <input
+            type="email"
+            value={form.email}
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            placeholder="your@email.com"
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Your Role *</label>
             <select
@@ -150,14 +149,14 @@ export function RegistrationForm({ webinarId, webinarSlug }) {
               className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
             >
               <option value="lecturer">Lecturer</option>
-              <option value="hod">Head of Department</option>
+              <option value="hod">Head of Dept</option>
               <option value="principal">Principal</option>
               <option value="student">Student</option>
               <option value="other">Other</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Mobile Number <span className="text-muted font-normal">(optional)</span></label>
+            <label className="block text-xs font-medium text-muted mb-1">Mobile <span className="font-normal">(optional)</span></label>
             <input
               type="tel"
               value={form.mobile}
@@ -168,30 +167,27 @@ export function RegistrationForm({ webinarId, webinarSlug }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1">College / Institution *</label>
-            <input
-              type="text"
-              value={form.college}
-              onChange={e => setForm(f => ({ ...f, college: e.target.value }))}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
-              placeholder="College name"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1">
-              City <span className="text-muted font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={form.city}
-              onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
-              placeholder="e.g. Bhubaneswar"
-            />
-          </div>
+        <div>
+          <label className="block text-xs font-medium text-muted mb-1">College / Institution *</label>
+          <input
+            type="text"
+            value={form.college}
+            onChange={e => setForm(f => ({ ...f, college: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            placeholder="College name"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted mb-1">City <span className="font-normal">(optional)</span></label>
+          <input
+            type="text"
+            value={form.city}
+            onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+            className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm focus:ring-2 focus:ring-teal focus:outline-none"
+            placeholder="e.g. Bhubaneswar"
+          />
         </div>
 
         <button
